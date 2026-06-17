@@ -3,6 +3,8 @@ import { verifyBearer } from "@/lib/server/auth";
 import { writeWorkspace } from "@/lib/server/workspace-store";
 import type { Project, Tag, TimeEntry } from "@/lib/types";
 
+export const runtime = "nodejs";
+
 type SyncBody = {
   projects?: Project[];
   tags?: Tag[];
@@ -32,21 +34,28 @@ export async function POST(req: Request) {
       ? body.email.trim()
       : process.env.EMAIL_TO?.trim() || "midokhalil1987@gmail.com";
 
-  const snapshot = await writeWorkspace({
-    projects,
-    tags,
-    entries,
-    emailReportsEnabled,
-    email,
-  });
+  try {
+    const snapshot = await writeWorkspace({
+      projects,
+      tags,
+      entries,
+      emailReportsEnabled,
+      email,
+    });
 
-  return NextResponse.json({
-    ok: true,
-    updatedAt: snapshot.updatedAt,
-    counts: {
-      projects: projects.length,
-      tags: tags.length,
-      entries: entries.length,
-    },
-  });
+    return NextResponse.json({
+      ok: true,
+      updatedAt: snapshot.updatedAt,
+      counts: {
+        projects: projects.length,
+        tags: tags.length,
+        entries: entries.length,
+      },
+    });
+  } catch (error) {
+    console.error("[api/sync]", error);
+    const message =
+      error instanceof Error ? error.message : "Failed to save workspace.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
