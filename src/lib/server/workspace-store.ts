@@ -83,6 +83,18 @@ async function getRedis() {
   return new Redis({ url: env.url, token: env.token });
 }
 
+/** Returns true if Redis env vars are set and a ping succeeds. */
+export async function pingRedis(): Promise<boolean> {
+  if (!redisEnv()) return false;
+  try {
+    const redis = await getRedis();
+    const pong = await redis.ping();
+    return pong === "PONG";
+  } catch {
+    return false;
+  }
+}
+
 async function readFromFile(): Promise<WorkspaceSnapshot | null> {
   try {
     const raw = await fs.readFile(DATA_FILE, "utf8");
