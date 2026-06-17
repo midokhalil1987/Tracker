@@ -35,6 +35,25 @@ export class StorageNotConfiguredError extends Error {
   }
 }
 
+function envPresent(name: string): boolean {
+  const value = process.env[name];
+  return Boolean(value && value.trim().length > 0);
+}
+
+/** Safe diagnostics — key names only, never values. */
+export function getEnvDiagnostics() {
+  return {
+    vercelEnv: process.env.VERCEL_ENV ?? null,
+    UPSTASH_REDIS_REST_URL: envPresent("UPSTASH_REDIS_REST_URL"),
+    UPSTASH_REDIS_REST_TOKEN: envPresent("UPSTASH_REDIS_REST_TOKEN"),
+    KV_REST_API_URL: envPresent("KV_REST_API_URL"),
+    KV_REST_API_TOKEN: envPresent("KV_REST_API_TOKEN"),
+    BLOB_READ_WRITE_TOKEN: envPresent("BLOB_READ_WRITE_TOKEN"),
+    SYNC_SECRET: envPresent("SYNC_SECRET"),
+    SMTP_PASS: envPresent("SMTP_PASS"),
+  };
+}
+
 function redisEnv(): { url: string; token: string } | null {
   const url =
     process.env.UPSTASH_REDIS_REST_URL?.trim() ||
