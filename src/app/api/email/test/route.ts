@@ -3,8 +3,16 @@ import { verifyBearer } from "@/lib/server/auth";
 import { isEmailConfigured, sendXlsxEmail } from "@/lib/server/email";
 import { readWorkspace } from "@/lib/server/workspace-store";
 import { buildXlsxBuffer, xlsxFilenameForDate } from "@/lib/xlsx-export";
+import type { Project, Tag, TimeEntry } from "@/lib/types";
 
 export const runtime = "nodejs";
+
+type TestBody = {
+  projects?: Project[];
+  tags?: Tag[];
+  entries?: TimeEntry[];
+  email?: string;
+};
 
 export async function POST(req: Request) {
   if (!verifyBearer(req, "SYNC_SECRET")) {
@@ -18,12 +26,47 @@ export async function POST(req: Request) {
     );
   }
 
-  const workspace = await readWorkspace();
+  let body: TestBody = {};
+  try {
+    const text = await req.text();
+    if (text.trim()) body = JSON.parse(text) as TestBody;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const fromBody =
+    Array.isArray(body.projects) &&
+    Array.isArray(body.tags) &&
+    Array.isArray(body.entries);
+
+  const workspace = fromBody
+    ? {
+        projects: body.projects!,
+        tags: body.tags!,
+        entries: body.entries!,
+        email:
+          typeof body.email === "string" && body.email.trim()
+            ? body.email.trim()
+            : process.env.EMAIL_TO?.trim() || "midokhalil1987@gmail.com",
+      }
+    : await readWorkspace().then((w) =>
+        w
+          ? {
+              projects: w.projects,
+              tags: w.tags,
+              entries: w.entries,
+              email: w.emailReportsEnabled
+                ? w.email
+                : process.env.EMAIL_TO?.trim() || w.email,
+            }
+          : null
+      );
+
   if (!workspace) {
     return NextResponse.json(
       {
         error:
-          "No synced data yet. Enable email reports and sync your workspace first.",
+          "No workspace data. Send a test from Settings (includes your data) or sync to the server first.",
       },
       { status: 404 }
     );
@@ -36,11 +79,7 @@ export async function POST(req: Request) {
     entries: workspace.entries,
   });
 
-  const to = workspace.emailReportsEnabled
-    ? workspace.email
-    : process.env.EMAIL_TO?.trim() || workspace.email;
+  await sendXlsxEmail({ to: workspace.email, filename, buffer });
 
-  await sendXlsxEmail({ to, filename, buffer });
-
-  return NextResponse.json({ ok: true, to, filename });
+  return NextResponse.json({ ok: true, to: workspace.email, filename });
 }

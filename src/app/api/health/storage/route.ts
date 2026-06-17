@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStorageStatus } from "@/lib/server/workspace-store";
+import { STORAGE_SETUP } from "@/lib/server/storage-setup";
 
 export const runtime = "nodejs";
 
@@ -10,8 +11,6 @@ export async function GET() {
   return NextResponse.json({
     ...status,
     ready,
-    hint: ready
-      ? null
-      : "Add Upstash Redis or Blob from Vercel → Storage, connect to this project, then Redeploy.",
+    setup: ready ? null : STORAGE_SETUP,
   });
 }

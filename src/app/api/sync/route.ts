@@ -55,7 +55,10 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("[api/sync]", error);
     if (error instanceof StorageNotConfiguredError) {
-      return NextResponse.json({ error: error.message }, { status: 503 });
+      return NextResponse.json(
+        { error: error.message, setup: error.setup },
+        { status: 503 }
+      );
     }
     const message =
       error instanceof Error ? error.message : "Failed to save workspace.";

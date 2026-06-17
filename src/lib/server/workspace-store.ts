@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import type { Project, Tag, TimeEntry } from "@/lib/types";
+import { STORAGE_SETUP } from "./storage-setup";
 
 const REDIS_KEY = "workspace:snapshot";
 const BLOB_PATH = "workspace-snapshot.json";
@@ -23,12 +24,13 @@ const DATA_FILE = path.join(DATA_DIR, "workspace.json");
 const DEFAULT_EMAIL =
   process.env.EMAIL_TO?.trim() || "midokhalil1987@gmail.com";
 
-const VERCEL_STORAGE_HINT =
-  "On Vercel: Project → Storage → add Upstash Redis (recommended) or Blob, connect it to this project, then Redeploy.";
-
 export class StorageNotConfiguredError extends Error {
+  readonly setup = STORAGE_SETUP;
+
   constructor() {
-    super(`Server storage is not configured. ${VERCEL_STORAGE_HINT}`);
+    super(
+      "Server storage is not configured. Add Upstash Redis env vars on Vercel and redeploy."
+    );
     this.name = "StorageNotConfiguredError";
   }
 }

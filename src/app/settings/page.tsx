@@ -45,6 +45,7 @@ export default function SettingsPage() {
   >(null);
   const [error, setError] = React.useState<string | null>(null);
   const [emailMessage, setEmailMessage] = React.useState<string | null>(null);
+  const [storageSetup, setStorageSetup] = React.useState<string[] | null>(null);
   const [success, setSuccess] = React.useState<ImportSummary | null>(null);
 
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -137,7 +138,11 @@ export default function SettingsPage() {
       emailReports.syncSecret
     );
     if (!result.ok) {
-      throw new Error(result.error);
+      const err = new Error(result.error) as Error & {
+        setup?: { steps: readonly string[] };
+      };
+      if (result.setup) err.setup = result.setup;
+      throw err;
     }
     setEmailReports({ lastSyncedAt: Date.now() });
     return result;
@@ -154,12 +159,16 @@ export default function SettingsPage() {
   const handleSyncNow = async () => {
     setError(null);
     setEmailMessage(null);
+    setStorageSetup(null);
     setBusy("sync");
     try {
       await runSync();
       setEmailMessage("Workspace synced to the server.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Sync failed.");
+      const setup = (e as Error & { setup?: { steps: readonly string[] } })
+        .setup?.steps;
+      if (setup) setStorageSetup([...setup]);
     } finally {
       setBusy(null);
     }
@@ -168,6 +177,7 @@ export default function SettingsPage() {
   const handleTestEmail = async () => {
     setError(null);
     setEmailMessage(null);
+    setStorageSetup(null);
     if (!emailReports.syncSecret.trim()) {
       setError(
         "Enter the sync secret first (must match SYNC_SECRET on the server)."
@@ -176,10 +186,19 @@ export default function SettingsPage() {
     }
     setBusy("test-email");
     try {
-      await runSync();
-      const result = await sendTestEmail(emailReports.syncSecret);
+      const result = await sendTestEmail(
+        {
+          projects,
+          tags,
+          entries,
+          emailReportsEnabled: emailReports.enabled,
+          email: emailReports.email,
+        },
+        emailReports.syncSecret
+      );
       if (!result.ok) {
         setError(result.error);
+        if (result.setup?.steps) setStorageSetup([...result.setup.steps]);
         return;
       }
       setEmailMessage(`Test email sent to ${emailReports.email}.`);
@@ -286,15 +305,37 @@ export default function SettingsPage() {
                 autoComplete="off"
               />
               <p className="text-xs text-muted-foreground">
-                Copy <code className="text-xs">SYNC_SECRET</code> from Vercel
-                → Settings → Environment Variables (same name). On Vercel you
-                also need <b>Storage</b>: add Upstash Redis or Blob and
-                redeploy. Check{" "}
-                <code className="text-xs">/api/health/storage</code> —{" "}
-                <code className="text-xs">ready</code> must be{" "}
-                <code className="text-xs">true</code>.
+                Set <code className="text-xs">SYNC_SECRET</code> in Vercel →
+                Settings → Environment Variables (same value here). Sync also
+                needs Upstash Redis — see steps below if sync fails.
               </p>
             </div>
+
+            <details className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              <summary className="cursor-pointer font-medium text-foreground">
+                Vercel: connect Upstash Redis (required for Sync)
+              </summary>
+              <ol className="mt-2 ml-4 list-decimal space-y-1.5 leading-relaxed">
+                <li>
+                  <a
+                    className="text-primary underline"
+                    href="https://console.upstash.com/redis"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    console.upstash.com/redis
+                  </a>{" "}
+                  → Create database
+                </li>
+                <li>Copy REST URL and REST TOKEN</li>
+                <li>
+                  Vercel → Tracker → Settings → Environment Variables → add{" "}
+                  <code>UPSTASH_REDIS_REST_URL</code> and{" "}
+                  <code>UPSTASH_REDIS_REST_TOKEN</code>
+                </li>
+                <li>Redeploy, then check /api/health/storage (ready: true)</li>
+              </ol>
+            </details>
 
             <p className="text-xs text-muted-foreground">
               Last synced: <span className="font-mono">{lastSyncedLabel}</span>
@@ -326,6 +367,22 @@ export default function SettingsPage() {
                 Send test email
               </Button>
             </div>
+
+            {error ? (
+              <div className="flex items-start gap-2 rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
+                <AlertTriangle className="size-4 mt-0.5 shrink-0" />
+                <div className="space-y-2">
+                  <span>{error}</span>
+                  {storageSetup ? (
+                    <ol className="ml-4 list-decimal text-xs space-y-1 text-danger/90">
+                      {storageSetup.map((step, i) => (
+                        <li key={i}>{step}</li>
+                      ))}
+                    </ol>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
 
             {emailMessage ? (
               <div className="flex items-start gap-2 rounded-md border border-success/30 bg-success/5 px-3 py-2 text-sm text-success">
