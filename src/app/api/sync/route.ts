@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyBearer } from "@/lib/server/auth";
-import { writeWorkspace } from "@/lib/server/workspace-store";
+import { writeWorkspace, StorageNotConfiguredError } from "@/lib/server/workspace-store";
 import type { Project, Tag, TimeEntry } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -54,6 +54,9 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("[api/sync]", error);
+    if (error instanceof StorageNotConfiguredError) {
+      return NextResponse.json({ error: error.message }, { status: 503 });
+    }
     const message =
       error instanceof Error ? error.message : "Failed to save workspace.";
     return NextResponse.json({ error: message }, { status: 500 });

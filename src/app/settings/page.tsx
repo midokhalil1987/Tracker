@@ -286,10 +286,13 @@ export default function SettingsPage() {
                 autoComplete="off"
               />
               <p className="text-xs text-muted-foreground">
-                Copy <code className="text-xs">SYNC_SECRET</code> from your
-                server <code className="text-xs">.env.local</code> into this
-                field. See <code className="text-xs">.env.example</code> for
-                SMTP and cron setup.
+                Copy <code className="text-xs">SYNC_SECRET</code> from Vercel
+                → Settings → Environment Variables (same name). On Vercel you
+                also need <b>Storage</b>: add Upstash Redis or Blob and
+                redeploy. Check{" "}
+                <code className="text-xs">/api/health/storage</code> —{" "}
+                <code className="text-xs">ready</code> must be{" "}
+                <code className="text-xs">true</code>.
               </p>
             </div>
 

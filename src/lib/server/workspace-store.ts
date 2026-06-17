@@ -3,6 +3,7 @@ import path from "path";
 import type { Project, Tag, TimeEntry } from "@/lib/types";
 
 const REDIS_KEY = "workspace:snapshot";
+const BLOB_PATH = "workspace-snapshot.json";
 
 export type WorkspaceSnapshot = {
   projects: Project[];
@@ -14,15 +15,25 @@ export type WorkspaceSnapshot = {
   lastEmailSentAt: string | null;
 };
 
+export type StorageMode = "redis" | "blob" | "file";
+
 const DATA_DIR = path.join(process.cwd(), ".data");
 const DATA_FILE = path.join(DATA_DIR, "workspace.json");
 
 const DEFAULT_EMAIL =
   process.env.EMAIL_TO?.trim() || "midokhalil1987@gmail.com";
 
-function redisEnv():
-  | { url: string; token: string }
-  | null {
+const VERCEL_STORAGE_HINT =
+  "On Vercel: Project → Storage → add Upstash Redis (recommended) or Blob, connect it to this project, then Redeploy.";
+
+export class StorageNotConfiguredError extends Error {
+  constructor() {
+    super(`Server storage is not configured. ${VERCEL_STORAGE_HINT}`);
+    this.name = "StorageNotConfiguredError";
+  }
+}
+
+function redisEnv(): { url: string; token: string } | null {
   const url =
     process.env.UPSTASH_REDIS_REST_URL?.trim() ||
     process.env.KV_REST_API_URL?.trim();
@@ -33,8 +44,34 @@ function redisEnv():
   return { url, token };
 }
 
-function storageMode(): "redis" | "file" {
-  return redisEnv() ? "redis" : "file";
+function blobConfigured(): boolean {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim());
+}
+
+/** Which backend is active (null = not configured on Vercel). */
+export function getStorageStatus(): {
+  mode: StorageMode | null;
+  vercel: boolean;
+  redis: boolean;
+  blob: boolean;
+} {
+  const vercel = Boolean(process.env.VERCEL);
+  const redis = Boolean(redisEnv());
+  const blob = blobConfigured();
+
+  let mode: StorageMode | null;
+  if (redis) mode = "redis";
+  else if (blob) mode = "blob";
+  else if (vercel) mode = null;
+  else mode = "file";
+
+  return { mode, vercel, redis, blob };
+}
+
+function resolveStorageMode(): StorageMode {
+  const { mode } = getStorageStatus();
+  if (!mode) throw new StorageNotConfiguredError();
+  return mode;
 }
 
 async function getRedis() {
@@ -69,11 +106,59 @@ async function writeToRedis(snapshot: WorkspaceSnapshot): Promise<void> {
   await redis.set(REDIS_KEY, snapshot);
 }
 
-export async function readWorkspace(): Promise<WorkspaceSnapshot | null> {
-  if (storageMode() === "redis") {
-    return readFromRedis();
+async function readFromBlob(): Promise<WorkspaceSnapshot | null> {
+  const { head } = await import("@vercel/blob");
+  try {
+    const meta = await head(BLOB_PATH);
+    const res = await fetch(meta.url);
+    if (!res.ok) return null;
+    return (await res.json()) as WorkspaceSnapshot;
+  } catch {
+    return null;
   }
-  return readFromFile();
+}
+
+async function writeToBlob(snapshot: WorkspaceSnapshot): Promise<void> {
+  const { put } = await import("@vercel/blob");
+  await put(BLOB_PATH, JSON.stringify(snapshot), {
+    access: "private",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: "application/json",
+  });
+}
+
+async function readByMode(mode: StorageMode): Promise<WorkspaceSnapshot | null> {
+  switch (mode) {
+    case "redis":
+      return readFromRedis();
+    case "blob":
+      return readFromBlob();
+    case "file":
+      return readFromFile();
+  }
+}
+
+async function writeByMode(
+  mode: StorageMode,
+  snapshot: WorkspaceSnapshot
+): Promise<void> {
+  switch (mode) {
+    case "redis":
+      await writeToRedis(snapshot);
+      break;
+    case "blob":
+      await writeToBlob(snapshot);
+      break;
+    case "file":
+      await writeToFile(snapshot);
+      break;
+  }
+}
+
+export async function readWorkspace(): Promise<WorkspaceSnapshot | null> {
+  const mode = resolveStorageMode();
+  return readByMode(mode);
 }
 
 export async function writeWorkspace(
@@ -81,7 +166,8 @@ export async function writeWorkspace(
     lastEmailSentAt?: string | null;
   }
 ): Promise<WorkspaceSnapshot> {
-  const existing = await readWorkspace();
+  const mode = resolveStorageMode();
+  const existing = await readByMode(mode);
   const snapshot: WorkspaceSnapshot = {
     projects: data.projects,
     tags: data.tags,
@@ -96,33 +182,21 @@ export async function writeWorkspace(
   };
 
   try {
-    if (storageMode() === "redis") {
-      await writeToRedis(snapshot);
-    } else {
-      await writeToFile(snapshot);
-    }
+    await writeByMode(mode, snapshot);
   } catch (error) {
-    const hint =
-      process.env.VERCEL && storageMode() === "file"
-        ? " On Vercel, add Upstash Redis (Marketplace → Storage → Redis) and connect it to this project."
-        : "";
-    throw new Error(
-      `Failed to persist workspace snapshot (${storageMode()}).${hint}`,
-      { cause: error }
-    );
+    if (error instanceof StorageNotConfiguredError) throw error;
+    throw new Error(`Failed to persist workspace snapshot (${mode}).`, {
+      cause: error,
+    });
   }
 
   return snapshot;
 }
 
 export async function markEmailSent(): Promise<void> {
-  const existing = await readWorkspace();
+  const mode = resolveStorageMode();
+  const existing = await readByMode(mode);
   if (!existing) return;
   existing.lastEmailSentAt = new Date().toISOString();
-
-  if (storageMode() === "redis") {
-    await writeToRedis(existing);
-  } else {
-    await writeToFile(existing);
-  }
+  await writeByMode(mode, existing);
 }
