@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Play, Square, DollarSign, Clock4 } from "lucide-react";
+import { Play, Square, DollarSign, Clock4, Check, X } from "lucide-react";
 import { useStore } from "@/lib/store";
 import {
   cn,
@@ -10,6 +10,8 @@ import {
   fromDateInputValue,
   parseDuration,
   toDateInputValue,
+  toTimeInputValue,
+  applyTimeToTimestamp,
 } from "@/lib/utils";
 import { ProjectPicker } from "./project-picker";
 import { TagPicker } from "./tag-picker";
@@ -33,7 +35,22 @@ export function TimerBar() {
   const [manualDate, setManualDate] = React.useState<string>(() =>
     toDateInputValue(new Date())
   );
-  const [manualStartTime, setManualStartTime] = React.useState<string>("09:00");
+  const [manualStartTime, setManualStartTime] = React.useState(() =>
+    toTimeInputValue(Date.now())
+  );
+
+  const [editingSince, setEditingSince] = React.useState(false);
+  const [sinceTime, setSinceTime] = React.useState("");
+
+  const beginEditSince = () => {
+    if (!running) return;
+    setSinceTime(toTimeInputValue(running.startedAt));
+    setEditingSince(true);
+  };
+
+  React.useEffect(() => {
+    if (!running) setEditingSince(false);
+  }, [running]);
 
   // Live ticker
   const [now, setNow] = React.useState<number>(() => Date.now());
@@ -76,23 +93,31 @@ export function TimerBar() {
     setDraftBillable(false);
   };
 
+  const resetSince = () => {
+    if (!running) return;
+    setSinceTime(toTimeInputValue(running.startedAt));
+    setEditingSince(false);
+  };
+
+  const commitSince = () => {
+    if (!running) return;
+    const startedAt = applyTimeToTimestamp(running.startedAt, sinceTime);
+    if (startedAt === null || startedAt > Date.now()) {
+      resetSince();
+      return;
+    }
+    setEditingSince(false);
+    if (startedAt !== running.startedAt) {
+      updateRunning({ startedAt });
+    }
+  };
+
   const handleAddManual = () => {
     const ms = parseDuration(manualDuration);
     if (!ms || ms <= 0) return;
     const chosenDate = fromDateInputValue(manualDate) ?? new Date();
-    // Parse "HH:MM" 24h start time; fall back to 09:00 on parse failure.
-    const m = /^(\d{1,2}):(\d{2})$/.exec(manualStartTime.trim());
-    const hours = m ? Math.min(23, Math.max(0, parseInt(m[1], 10))) : 9;
-    const minutes = m ? Math.min(59, Math.max(0, parseInt(m[2], 10))) : 0;
-    const startedAt = new Date(
-      chosenDate.getFullYear(),
-      chosenDate.getMonth(),
-      chosenDate.getDate(),
-      hours,
-      minutes,
-      0,
-      0
-    ).getTime();
+    const startedAt = applyTimeToTimestamp(chosenDate.getTime(), manualStartTime);
+    if (startedAt === null) return;
     // endedAt = startedAt + duration. This naturally supports spanning past
     // midnight (e.g. 4:00 PM Jun 16 + 10:00:00 = 2:00 AM Jun 17).
     const endedAt = startedAt + ms;
@@ -110,7 +135,6 @@ export function TimerBar() {
     setDraftBillable(false);
     setManualDuration("01:00:00");
     setManualDate(toDateInputValue(new Date()));
-    setManualStartTime("09:00");
   };
 
   return (
@@ -176,10 +200,48 @@ export function TimerBar() {
           {running ? (
             <>
               <div className="flex items-center gap-2 px-3 h-11 rounded-md border border-input bg-card">
-                <span className="size-2 rounded-full bg-danger animate-pulse" />
-                <span className="text-xs text-muted-foreground hidden sm:inline">
-                  since {formatTime(running.startedAt)}
-                </span>
+                <span className="size-2 rounded-full bg-danger animate-pulse shrink-0" />
+                {editingSince ? (
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground">since</span>
+                    <input
+                      type="time"
+                      value={sinceTime}
+                      step={60}
+                      onChange={(e) => setSinceTime(e.target.value)}
+                      onBlur={commitSince}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitSince();
+                        if (e.key === "Escape") resetSince();
+                      }}
+                      autoFocus
+                      className="h-8 px-1.5 rounded border border-input bg-card text-xs font-mono focus:outline-none focus:ring-2 focus:ring-ring/60"
+                    />
+                    <button
+                      type="button"
+                      onClick={commitSince}
+                      className="size-7 grid place-items-center rounded-md text-success hover:bg-success/10"
+                    >
+                      <Check className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={resetSince}
+                      className="size-7 grid place-items-center rounded-md text-muted-foreground hover:bg-muted"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={beginEditSince}
+                    className="text-xs text-muted-foreground hover:text-primary shrink-0"
+                    title={`Started at ${new Date(running.startedAt).toLocaleString()}`}
+                  >
+                    since {formatTime(running.startedAt)}
+                  </button>
+                )}
                 <span className="font-mono tabular-nums text-base md:text-lg font-semibold">
                   {formatDuration(elapsed)}
                 </span>

@@ -73,6 +73,15 @@ function weekLabel(week: number) {
   return `${format(start, "MMM d, yyyy")} – ${format(end, "MMM d, yyyy")}`;
 }
 
+function isRecentWeek(week: number): boolean {
+  const start = new Date(week);
+  const now = new Date();
+  return (
+    isSameWeek(start, now, { weekStartsOn: 1 }) ||
+    isSameWeek(start, subWeeks(now, 1), { weekStartsOn: 1 })
+  );
+}
+
 function sumMs(items: TimeEntry[]): number {
   return items.reduce((acc, e) => acc + (e.endedAt - e.startedAt), 0);
 }
@@ -202,14 +211,25 @@ export function EntriesList() {
 
   const grouped = React.useMemo(() => groupByWeekAndDay(entries), [entries]);
 
-  // Empty set = all weeks expanded by default.
-  const [collapsed, setCollapsed] = React.useState<Set<number>>(() => new Set());
+  /** Per-week collapse overrides; default is open for this/last week only. */
+  const [collapseOverrides, setCollapseOverrides] = React.useState<
+    Map<number, boolean>
+  >(() => new Map());
+
+  const isWeekCollapsed = React.useCallback(
+    (week: number) => {
+      const override = collapseOverrides.get(week);
+      if (override !== undefined) return override;
+      return !isRecentWeek(week);
+    },
+    [collapseOverrides]
+  );
 
   const toggleWeek = (week: number) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(week)) next.delete(week);
-      else next.add(week);
+    setCollapseOverrides((prev) => {
+      const next = new Map(prev);
+      const current = prev.get(week) ?? !isRecentWeek(week);
+      next.set(week, !current);
       return next;
     });
   };
@@ -243,7 +263,7 @@ export function EntriesList() {
           key={week}
           week={week}
           days={days}
-          isCollapsed={collapsed.has(week)}
+          isCollapsed={isWeekCollapsed(week)}
           onToggle={() => toggleWeek(week)}
           accentColor={pickDefaultColor(index)}
         />

@@ -5,20 +5,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import {
-  Timer,
   LayoutDashboard,
   FolderKanban,
   BarChart3,
-  Clock,
   Tag as TagIcon,
   Settings,
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRunningElapsed } from "@/hooks/use-running-elapsed";
+import { TempoIcon } from "@/components/tempo-icon";
 
 const navItems = [
-  { href: "/", label: "Timer", icon: Timer },
+  { href: "/", label: "Timer", useTempoIcon: true as const },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/projects", label: "Projects", icon: FolderKanban },
@@ -62,7 +61,7 @@ export function Sidebar() {
   }, [measureIndicator]);
 
   return (
-    <aside className="hidden md:flex w-64 shrink-0 flex-col relative overflow-hidden bg-sidebar text-sidebar-foreground border-r border-white/5">
+    <aside className="hidden md:flex w-72 shrink-0 flex-col relative overflow-hidden bg-sidebar text-sidebar-foreground border-r border-white/5">
       {/* Ambient background */}
       <div
         className="pointer-events-none absolute -top-24 -left-16 size-56 rounded-full bg-primary/25 blur-3xl sidebar-glow-orb"
@@ -91,7 +90,7 @@ export function Sidebar() {
             className="absolute inset-0 rounded-xl opacity-60 sidebar-logo-shimmer bg-gradient-to-r from-transparent via-white/35 to-transparent"
             aria-hidden
           />
-          <Clock className="relative size-5 text-white drop-shadow-sm" />
+          <TempoIcon className="relative size-5 text-white drop-shadow-sm" active={running} />
           {running ? (
             <span
               className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-danger border-2 border-sidebar sidebar-timer-badge"
@@ -126,8 +125,9 @@ export function Sidebar() {
 
         <div className="space-y-1">
           {navItems.map((item, index) => {
-          const Icon = item.icon;
+          const Icon = "icon" in item ? item.icon : null;
           const active = isActive(pathname, item.href);
+          const isTimer = item.href === "/";
           return (
             <Link
               key={item.href}
@@ -137,7 +137,8 @@ export function Sidebar() {
               }}
               href={item.href}
               className={cn(
-                "sidebar-nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm",
+                "sidebar-nav-item group relative flex items-center gap-3 px-3 rounded-lg text-sm",
+                item.href === "/" && running ? "py-3" : "py-2.5",
                 "transition-[color,transform] duration-200 ease-out",
                 "hover:text-white hover:translate-x-0.5",
                 active
@@ -151,16 +152,31 @@ export function Sidebar() {
                   "grid place-items-center size-8 rounded-md transition-all duration-200",
                   active
                     ? "bg-primary/25 text-primary shadow-[0_0_16px_-4px_rgba(99,102,241,0.9)]"
-                    : "bg-white/5 text-sidebar-foreground/80 group-hover:bg-white/10 group-hover:text-white group-hover:scale-105"
+                    : "bg-white/5 text-sidebar-foreground/80 group-hover:bg-white/10 group-hover:text-white group-hover:scale-105",
+                  isTimer && running && "bg-danger/20 text-danger shadow-[0_0_16px_-4px_rgba(239,68,68,0.65)]"
                 )}
               >
-                <Icon className="size-4" />
+                {item.useTempoIcon ? (
+                  <TempoIcon
+                    className="size-[18px]"
+                    active={running}
+                  />
+                ) : Icon ? (
+                  <Icon className="size-4" />
+                ) : null}
               </span>
               <span className="flex-1 min-w-0 truncate">{item.label}</span>
               {item.href === "/" && running ? (
-                <span className="inline-flex items-center gap-1.5 shrink-0 rounded-full bg-danger/15 border border-danger/30 px-2 py-0.5 sidebar-timer-badge">
-                  <span className="size-1.5 rounded-full bg-danger animate-pulse" />
-                  <span className="font-mono tabular-nums text-[11px] font-semibold text-danger">
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-2 shrink-0 rounded-lg",
+                    "bg-danger/90 text-white border border-danger/80",
+                    "px-3 py-1.5 shadow-[0_0_20px_-4px_rgba(239,68,68,0.75)]",
+                    "sidebar-timer-badge"
+                  )}
+                >
+                  <span className="size-2.5 rounded-full bg-white animate-pulse shrink-0" />
+                  <span className="font-mono tabular-nums text-base font-bold tracking-wide min-w-[8ch] text-center">
                     {formatted}
                   </span>
                 </span>
@@ -169,18 +185,31 @@ export function Sidebar() {
           );
           })}
         </div>
+      </nav>
 
-        <div className="mt-auto pt-6 -mx-3 pointer-events-none">
-          <div className="w-full aspect-square">
+      {/* Tracker illustration */}
+      <div className="relative z-10 shrink-0 px-2 pb-3 pointer-events-none">
+        <div
+          className={cn(
+            "relative w-full h-64 rounded-2xl overflow-hidden",
+            "border border-white/12 bg-gradient-to-b from-white/[0.08] to-primary/10",
+            "shadow-[0_8px_32px_-8px_rgba(99,102,241,0.45),inset_0_1px_0_rgba(255,255,255,0.08)]"
+          )}
+        >
+          <div
+            className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_40%,rgba(99,102,241,0.22),transparent_68%)]"
+            aria-hidden
+          />
+          <div className="absolute inset-0 flex items-center justify-center p-1">
             <DotLottieReact
               src="https://lottie.host/88a100b8-0205-48f2-9a85-e1118732fdfd/O8Bjf7DhMq.lottie"
               loop
               autoplay
-              className="size-full"
+              className="size-full min-h-[15rem] scale-[1.18] brightness-110 contrast-110 drop-shadow-[0_4px_28px_rgba(255,255,255,0.15)]"
             />
           </div>
         </div>
-      </nav>
+      </div>
 
       {/* Footer */}
       <div className="relative z-10 px-5 py-4 border-t border-white/8">
