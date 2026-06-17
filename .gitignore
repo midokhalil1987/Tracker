@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# synced workspace snapshot for scheduled email exports
+/.data
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
