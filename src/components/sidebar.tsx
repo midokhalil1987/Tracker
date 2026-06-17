@@ -90,7 +90,7 @@ export function Sidebar() {
             className="absolute inset-0 rounded-xl opacity-60 sidebar-logo-shimmer bg-gradient-to-r from-transparent via-white/35 to-transparent"
             aria-hidden
           />
-          <TempoIcon className="relative size-5 text-white drop-shadow-sm" active={running} />
+          <TempoIcon className="relative size-5 text-white drop-shadow-sm" active={!!running} />
           {running ? (
             <span
               className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-danger border-2 border-sidebar sidebar-timer-badge"
@@ -159,7 +159,7 @@ export function Sidebar() {
                 {item.useTempoIcon ? (
                   <TempoIcon
                     className="size-[18px]"
-                    active={running}
+                    active={!!running}
                   />
                 ) : Icon ? (
                   <Icon className="size-4" />
