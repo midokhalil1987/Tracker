@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRunningElapsed } from "@/hooks/use-running-elapsed";
-import { TempoIcon } from "@/components/tempo-icon";
+import { TimelyIcon } from "@/components/timely-icon";
 import { APP_NAME, APP_SUBTITLE } from "@/lib/brand";
 
 const navItems = [
@@ -34,7 +34,6 @@ export function Sidebar() {
   const pathname = usePathname();
   const { running, formatted } = useRunningElapsed();
   const navRef = React.useRef<HTMLElement>(null);
-  const itemRefs = React.useRef(new Map<string, HTMLAnchorElement>());
   const [indicator, setIndicator] = React.useState({ top: 0, height: 40 });
 
   const activeHref =
@@ -42,8 +41,11 @@ export function Sidebar() {
 
   const measureIndicator = React.useCallback(() => {
     const nav = navRef.current;
-    const el = itemRefs.current.get(activeHref);
-    if (!nav || !el) return;
+    if (!nav) return;
+    const el = nav.querySelector<HTMLAnchorElement>(
+      `[data-nav-href="${CSS.escape(activeHref)}"]`
+    );
+    if (!el) return;
     const navRect = nav.getBoundingClientRect();
     const elRect = el.getBoundingClientRect();
     setIndicator({
@@ -91,7 +93,10 @@ export function Sidebar() {
             className="absolute inset-0 rounded-xl opacity-60 sidebar-logo-shimmer bg-gradient-to-r from-transparent via-white/35 to-transparent"
             aria-hidden
           />
-          <TempoIcon className="relative size-5 text-white drop-shadow-sm" active={!!running} />
+          <TimelyIcon
+            className="relative size-5 text-white drop-shadow-sm"
+            active={!!running}
+          />
           {running ? (
             <span
               className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-danger border-2 border-sidebar sidebar-timer-badge"
@@ -101,11 +106,11 @@ export function Sidebar() {
         </div>
         <div className="flex flex-col min-w-0">
           <span className="text-white font-semibold leading-tight tracking-tight">
-            Tempo
+            {APP_NAME}
           </span>
           <span className="text-[11px] text-sidebar-foreground/65 leading-tight flex items-center gap-1">
             <Sparkles className="size-3 text-primary/80" />
-            Time Tracker
+            {APP_SUBTITLE}
           </span>
         </div>
       </div>
@@ -126,64 +131,46 @@ export function Sidebar() {
 
         <div className="space-y-1">
           {navItems.map((item, index) => {
-          const Icon = "icon" in item ? item.icon : null;
-          const active = isActive(pathname, item.href);
-          const isTimer = item.href === "/";
-          return (
-            <Link
-              key={item.href}
-                if (el) itemRefs.current.set(item.href, el);
-                else itemRefs.current.delete(item.href);
-              }}
-              href={item.href}
-              className={cn(
-                item.href === "/" && running ? "py-3" : "py-2.5",
-                "transition-[color,transform] duration-200 ease-out",
-                "hover:text-white hover:translate-x-0.5",
-                active
-                  ? "text-white font-medium"
-              )}
-            >
-              <span
-                }}
+            const Icon = "icon" in item ? item.icon : null;
+            const active = isActive(pathname, item.href);
+            const isTimer = item.href === "/";
+            return (
+              <Link
+                key={item.href}
                 href={item.href}
+                data-nav-href={item.href}
                 className={cn(
-                  "grid place-items-center size-8 rounded-md transition-all duration-200",
+                  "sidebar-nav-item group relative flex items-center gap-3 px-3 rounded-lg text-sm cursor-pointer",
+                  item.href === "/" && running ? "py-3" : "py-2.5",
+                  "transition-[color,transform] duration-200 ease-out",
+                  "hover:text-white hover:translate-x-0.5",
                   active
-                    ? "bg-primary/25 text-primary shadow-[0_0_16px_-4px_rgba(99,102,241,0.9)]"
-                    : "bg-white/5 text-sidebar-foreground/80 group-hover:bg-white/10 group-hover:text-white group-hover:scale-105",
-                  isTimer && running && "bg-danger/20 text-danger shadow-[0_0_16px_-4px_rgba(239,68,68,0.65)]"
+                    ? "text-white font-medium"
                     : "text-sidebar-foreground/75",
                 )}
+                style={{ animationDelay: `${index * 55}ms` }}
               >
-                {item.useTempoIcon ? (
-                  <TempoIcon
-                    className="size-[18px]"
-                    active={!!running}
-                  />
-                ) : Icon ? (
-                  <Icon className="size-4" />
-                ) : null}
-              </span>
-              <span className="flex-1 min-w-0 truncate">{item.label}</span>
                 <span
                   className={cn(
-                    "inline-flex items-center gap-2 shrink-0 rounded-lg",
-                    "bg-danger/90 text-white border border-danger/80",
-                    "px-3 py-1.5 shadow-[0_0_20px_-4px_rgba(239,68,68,0.75)]",
-                    "sidebar-timer-badge"
+                    "grid place-items-center size-8 rounded-md transition-all duration-200",
+                    active
+                      ? "bg-primary/25 text-primary shadow-[0_0_16px_-4px_rgba(99,102,241,0.9)]"
+                      : "bg-white/5 text-sidebar-foreground/80 group-hover:bg-white/10 group-hover:text-white group-hover:scale-105",
+                    isTimer &&
+                      running &&
+                      "bg-danger/20 text-danger shadow-[0_0_16px_-4px_rgba(239,68,68,0.65)]",
                   )}
                 >
-                  <span className="size-2.5 rounded-full bg-white animate-pulse shrink-0" />
-                  <span className="font-mono tabular-nums text-base font-bold tracking-wide min-w-[8ch] text-center">
-                    {formatted}
-                  </span>
+                  {item.useTimelyIcon ? (
+                    <TimelyIcon
+                      className="size-[18px]"
+                      active={!!running}
                     />
                   ) : Icon ? (
                     <Icon className="size-4" />
                   ) : null}
                 </span>
-          );
+                <span className="flex-1 min-w-0 truncate">
                   {item.label}
                 </span>
                 {item.href === "/" && running ? (
