@@ -15,9 +15,10 @@ import {
 import { cn } from "@/lib/utils";
 import { useRunningElapsed } from "@/hooks/use-running-elapsed";
 import { TempoIcon } from "@/components/tempo-icon";
+import { APP_NAME, APP_SUBTITLE } from "@/lib/brand";
 
 const navItems = [
-  { href: "/", label: "Timer", useTempoIcon: true as const },
+  { href: "/", label: "Timer", useTimelyIcon: true as const },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/projects", label: "Projects", icon: FolderKanban },
@@ -83,7 +84,7 @@ export function Sidebar() {
           className={cn(
             "relative size-10 rounded-xl grid place-items-center shadow-lg transition-transform duration-500",
             "bg-gradient-to-br from-primary via-indigo-500 to-violet-600",
-            running && "scale-105"
+            running && "scale-105",
           )}
         >
           <div
@@ -131,29 +132,28 @@ export function Sidebar() {
           return (
             <Link
               key={item.href}
-              ref={(el) => {
                 if (el) itemRefs.current.set(item.href, el);
                 else itemRefs.current.delete(item.href);
               }}
               href={item.href}
               className={cn(
-                "sidebar-nav-item group relative flex items-center gap-3 px-3 rounded-lg text-sm",
                 item.href === "/" && running ? "py-3" : "py-2.5",
                 "transition-[color,transform] duration-200 ease-out",
                 "hover:text-white hover:translate-x-0.5",
                 active
                   ? "text-white font-medium"
-                  : "text-sidebar-foreground/75"
               )}
-              style={{ animationDelay: `${index * 55}ms` }}
             >
               <span
+                }}
+                href={item.href}
                 className={cn(
                   "grid place-items-center size-8 rounded-md transition-all duration-200",
                   active
                     ? "bg-primary/25 text-primary shadow-[0_0_16px_-4px_rgba(99,102,241,0.9)]"
                     : "bg-white/5 text-sidebar-foreground/80 group-hover:bg-white/10 group-hover:text-white group-hover:scale-105",
                   isTimer && running && "bg-danger/20 text-danger shadow-[0_0_16px_-4px_rgba(239,68,68,0.65)]"
+                    : "text-sidebar-foreground/75",
                 )}
               >
                 {item.useTempoIcon ? (
@@ -166,7 +166,6 @@ export function Sidebar() {
                 ) : null}
               </span>
               <span className="flex-1 min-w-0 truncate">{item.label}</span>
-              {item.href === "/" && running ? (
                 <span
                   className={cn(
                     "inline-flex items-center gap-2 shrink-0 rounded-lg",
@@ -179,10 +178,31 @@ export function Sidebar() {
                   <span className="font-mono tabular-nums text-base font-bold tracking-wide min-w-[8ch] text-center">
                     {formatted}
                   </span>
+                    />
+                  ) : Icon ? (
+                    <Icon className="size-4" />
+                  ) : null}
                 </span>
-              ) : null}
-            </Link>
           );
+                  {item.label}
+                </span>
+                {item.href === "/" && running ? (
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-2 shrink-0 rounded-lg",
+                      "bg-danger/90 text-white border border-danger/80",
+                      "px-3 py-1.5 shadow-[0_0_20px_-4px_rgba(239,68,68,0.75)]",
+                      "sidebar-timer-badge",
+                    )}
+                  >
+                    <span className="size-2.5 rounded-full bg-white animate-pulse shrink-0" />
+                    <span className="font-mono tabular-nums text-base font-bold tracking-wide min-w-[8ch] text-center">
+                      {formatted}
+                    </span>
+                  </span>
+                ) : null}
+              </Link>
+            );
           })}
         </div>
       </nav>
@@ -193,7 +213,7 @@ export function Sidebar() {
           className={cn(
             "relative w-full h-64 rounded-2xl overflow-hidden",
             "border border-white/12 bg-gradient-to-b from-white/[0.08] to-primary/10",
-            "shadow-[0_8px_32px_-8px_rgba(99,102,241,0.45),inset_0_1px_0_rgba(255,255,255,0.08)]"
+            "shadow-[0_8px_32px_-8px_rgba(99,102,241,0.45),inset_0_1px_0_rgba(255,255,255,0.08)]",
           )}
         >
           <div
@@ -202,7 +222,7 @@ export function Sidebar() {
           />
           <div className="absolute inset-0 flex items-center justify-center p-1">
             <DotLottieReact
-              src="https://lottie.host/88a100b8-0205-48f2-9a85-e1118732fdfd/O8Bjf7DhMq.lottie"
+              src="https://lottie.host/53acd86b-8294-4474-8036-75921c5de036/ITjIe2EejZ.lottie"
               loop
               autoplay
               className="size-full min-h-[15rem] scale-[1.18] brightness-110 contrast-110 drop-shadow-[0_4px_28px_rgba(255,255,255,0.15)]"

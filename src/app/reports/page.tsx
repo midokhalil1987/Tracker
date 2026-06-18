@@ -30,6 +30,9 @@ import { Button } from "@/components/ui/button";
 import { ProjectPicker } from "@/components/project-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/popover";
 import { DateRangePicker } from "@/components/date-range-picker";
+import { EarningsSummaryCard } from "@/components/earnings-summary-card";
+import { PageScroll } from "@/components/page-scroll";
+import { ScrollReveal } from "@/components/scroll-reveal";
 import {
   cn,
   computeEarnings,
@@ -270,7 +273,8 @@ export default function ReportsPage() {
           </Button>
         }
       />
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
+      <PageScroll className="p-4 md:p-6 space-y-5">
+        <ScrollReveal>
         {/* Filters */}
         <Card>
           <div className="p-4 md:p-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -283,7 +287,7 @@ export default function ReportsPage() {
                     type="button"
                     onClick={() => setReportsFilter({ preset: p.id })}
                     className={cn(
-                      "px-3 h-8 rounded-md text-sm",
+                      "px-3 h-8 rounded-md text-sm cursor-pointer",
                       preset === p.id
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted hover:bg-muted/70 text-foreground"
@@ -305,7 +309,7 @@ export default function ReportsPage() {
                           setReportsFilter({ preset: "custom" });
                       }}
                       className={cn(
-                        "px-3 h-8 rounded-md text-sm inline-flex items-center gap-1.5",
+                        "px-3 h-8 rounded-md text-sm inline-flex items-center gap-1.5 cursor-pointer",
                         preset === "custom"
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted hover:bg-muted/70 text-foreground"
@@ -363,7 +367,9 @@ export default function ReportsPage() {
             {format(range.end, "MMM d, yyyy")}
           </div>
         </Card>
+        </ScrollReveal>
 
+        <ScrollReveal delay={60}>
         {/* Summary */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
@@ -390,17 +396,7 @@ export default function ReportsPage() {
               </p>
             </div>
           </Card>
-          <Card>
-            <div className="p-5">
-              <p className="text-sm text-muted-foreground">Earnings</p>
-              <p className="text-2xl font-semibold mt-1 font-mono tabular-nums text-success">
-                {formatCurrency(earnings)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                billable × project rate
-              </p>
-            </div>
-          </Card>
+          <EarningsSummaryCard earnings={earnings} />
           <Card>
             <div className="p-5">
               <p className="text-sm text-muted-foreground">Entries</p>
@@ -414,7 +410,9 @@ export default function ReportsPage() {
             </div>
           </Card>
         </div>
+        </ScrollReveal>
 
+        <ScrollReveal delay={120}>
         {/* Chart */}
         <Card>
           <div className="p-5 pb-0">
@@ -477,7 +475,9 @@ export default function ReportsPage() {
             </ResponsiveContainer>
           </div>
         </Card>
+        </ScrollReveal>
 
+        <ScrollReveal delay={180}>
         {/* By project breakdown */}
         <Card>
           <div className="p-5 pb-3">
@@ -532,7 +532,8 @@ export default function ReportsPage() {
             )}
           </div>
         </Card>
-      </div>
+        </ScrollReveal>
+      </PageScroll>
     </>
   );
 }

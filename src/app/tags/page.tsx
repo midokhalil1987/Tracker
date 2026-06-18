@@ -4,15 +4,23 @@ import * as React from "react";
 import { Plus, Trash2, Tag as TagIcon } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { PageHeader } from "@/components/page-header";
+import { PageScroll } from "@/components/page-scroll";
+import { ScrollReveal } from "@/components/scroll-reveal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { useConfirm } from "@/components/confirm-dialog";
+import { useToast } from "@/components/toast";
 
 export default function TagsPage() {
   const tags = useStore((s) => s.tags);
   const entries = useStore((s) => s.entries);
   const addTag = useStore((s) => s.addTag);
   const deleteTag = useStore((s) => s.deleteTag);
+  const restoreTag = useStore((s) => s.restoreTag);
+  const restoreEntryTags = useStore((s) => s.restoreEntryTags);
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const [name, setName] = React.useState("");
 
@@ -36,7 +44,8 @@ export default function TagsPage() {
         title="Tags"
         description="Add tags to organize and filter your time entries."
       />
-      <div className="p-4 md:p-6 flex-1 overflow-y-auto space-y-5">
+      <PageScroll className="p-4 md:p-6 space-y-5">
+        <ScrollReveal>
         <Card>
           <div className="p-5 flex flex-col sm:flex-row gap-3 sm:items-end">
             <div className="flex-1 space-y-1.5">
@@ -57,8 +66,10 @@ export default function TagsPage() {
             </Button>
           </div>
         </Card>
+        </ScrollReveal>
 
         {tags.length === 0 ? (
+          <ScrollReveal delay={80}>
           <div className="text-center py-16">
             <div className="inline-flex size-12 items-center justify-center rounded-full bg-muted mb-4">
               <TagIcon className="size-6 text-muted-foreground" />
@@ -68,7 +79,9 @@ export default function TagsPage() {
               Create tags to categorize your time entries.
             </p>
           </div>
+          </ScrollReveal>
         ) : (
+          <ScrollReveal delay={80}>
           <Card>
             <div className="divide-y divide-border">
               {tags.map((t) => (
@@ -87,10 +100,36 @@ export default function TagsPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (confirm(`Delete tag "${t.name}"?`)) deleteTag(t.id);
+                    onClick={async () => {
+                      if (
+                        await confirm({
+                          title: `Delete tag "${t.name}"?`,
+                          description:
+                            "The tag will be removed from all entries.",
+                          confirmLabel: "Delete",
+                          destructive: true,
+                        })
+                      ) {
+                        const tagSnapshot = { ...t };
+                        const entrySnapshots = entries
+                          .filter((e) => e.tagIds.includes(t.id))
+                          .map((e) => ({
+                            id: e.id,
+                            tagIds: [...e.tagIds],
+                          }));
+                        deleteTag(t.id);
+                        toast({
+                          message: `Tag "${t.name}" deleted`,
+                          undo: () => {
+                            restoreTag(tagSnapshot);
+                            for (const snap of entrySnapshots) {
+                              restoreEntryTags(snap.id, snap.tagIds);
+                            }
+                          },
+                        });
+                      }
                     }}
-                    className="size-8 grid place-items-center rounded-md text-muted-foreground hover:bg-danger/10 hover:text-danger opacity-0 group-hover:opacity-100"
+                    className="size-8 grid place-items-center rounded-md text-muted-foreground hover:bg-danger/10 hover:text-danger opacity-0 group-hover:opacity-100 cursor-pointer"
                   >
                     <Trash2 className="size-4" />
                   </button>
@@ -98,8 +137,9 @@ export default function TagsPage() {
               ))}
             </div>
           </Card>
+          </ScrollReveal>
         )}
-      </div>
+      </PageScroll>
     </>
   );
 }

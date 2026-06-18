@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { PageHeader } from "@/components/page-header";
+import { PageScroll } from "@/components/page-scroll";
+import { ScrollRevealGroup } from "@/components/scroll-reveal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +20,7 @@ import { ThemeSelector } from "@/components/theme-selector";
 import { cn } from "@/lib/utils";
 import { exportToXlsx, importFromXlsx, type ImportResult } from "@/lib/xlsx";
 import { sendTestEmail, syncWorkspace } from "@/lib/sync-client";
+import { useConfirm } from "@/components/confirm-dialog";
 
 type ImportSummary = {
   warnings: string[];
@@ -38,6 +41,9 @@ export default function SettingsPage() {
   const hydrated = useStore((s) => s.hydrated);
   const emailReports = useStore((s) => s.emailReports);
   const setEmailReports = useStore((s) => s.setEmailReports);
+  const freelanceGoals = useStore((s) => s.freelanceGoals);
+  const setFreelanceGoals = useStore((s) => s.setFreelanceGoals);
+  const confirm = useConfirm();
 
   const [mode, setMode] = React.useState<"merge" | "replace">("merge");
   const [busy, setBusy] = React.useState<
@@ -92,12 +98,15 @@ export default function SettingsPage() {
       };
 
       if (mode === "replace") {
-        const ok = window.confirm(
-          `Replace ALL existing data?\n\n` +
+        const ok = await confirm({
+          title: "Replace all existing data?",
+          description:
             `This will overwrite ${projects.length} projects, ${tags.length} tags ` +
             `and ${entries.length} entries with the data from this file ` +
-            `(${counts.projects} projects, ${counts.tags} tags, ${counts.entries} entries).`
-        );
+            `(${counts.projects} projects, ${counts.tags} tags, ${counts.entries} entries).`,
+          confirmLabel: "Replace all",
+          destructive: true,
+        });
         if (!ok) return;
         replaceAll(parsed);
       } else {
@@ -220,7 +229,8 @@ export default function SettingsPage() {
         title="Settings"
         description="Backup, restore and bulk-edit your data."
       />
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
+      <PageScroll className="p-4 md:p-6">
+        <ScrollRevealGroup className="space-y-5">
         {/* Snapshot */}
         <Card>
           <CardHeader>
@@ -230,6 +240,61 @@ export default function SettingsPage() {
             <Stat label="Projects" value={hydrated ? projects.length : "—"} />
             <Stat label="Tags" value={hydrated ? tags.length : "—"} />
             <Stat label="Time entries" value={hydrated ? entries.length : "—"} />
+          </CardContent>
+        </Card>
+
+        {/* Freelance goals */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Freelance goals</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Weekly targets for billable hours and earnings. Shown on the timer
+              and dashboard.
+            </p>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                Billable hours / week
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={168}
+                step={1}
+                value={freelanceGoals.weeklyHoursTarget}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  if (Number.isFinite(n) && n > 0) {
+                    setFreelanceGoals({ weeklyHoursTarget: n });
+                  }
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                Earnings goal / week (optional)
+              </label>
+              <Input
+                type="number"
+                min={0}
+                step={50}
+                placeholder="0 = hidden"
+                value={
+                  freelanceGoals.weeklyEarningsTarget || ""
+                }
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  setFreelanceGoals({
+                    weeklyEarningsTarget:
+                      Number.isFinite(n) && n >= 0 ? n : 0,
+                  });
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Uses project hourly rates on billable entries.
+              </p>
+            </div>
           </CardContent>
         </Card>
 
@@ -593,7 +658,8 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+        </ScrollRevealGroup>
+      </PageScroll>
     </>
   );
 }
@@ -627,7 +693,7 @@ function ModeOption({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex-1 min-w-[200px] text-left px-4 py-3 rounded-lg border-2 transition-colors",
+        "flex-1 min-w-[200px] text-left px-4 py-3 rounded-lg border-2 transition-colors cursor-pointer",
         active
           ? destructive
             ? "border-danger bg-danger/5"

@@ -96,7 +96,12 @@ export function PopoverTrigger({
     });
   }
   return (
-    <button ref={triggerRef} onClick={handleClick} type="button">
+    <button
+      ref={triggerRef}
+      onClick={handleClick}
+      type="button"
+      className="cursor-pointer"
+    >
       {children}
     </button>
   );

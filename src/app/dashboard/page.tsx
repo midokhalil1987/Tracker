@@ -25,6 +25,8 @@ import {
 import { TrendingUp, Clock, Target, Wallet } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { PageHeader } from "@/components/page-header";
+import { PageScroll } from "@/components/page-scroll";
+import { ScrollReveal } from "@/components/scroll-reveal";
 import { Card } from "@/components/ui/card";
 import {
   computeEarnings,
@@ -36,6 +38,7 @@ import {
 export default function DashboardPage() {
   const entries = useStore((s) => s.entries);
   const projects = useStore((s) => s.projects);
+  const freelanceGoals = useStore((s) => s.freelanceGoals);
   const hydrated = useStore((s) => s.hydrated);
 
   const now = React.useMemo(() => new Date(), []);
@@ -81,11 +84,16 @@ export default function DashboardPage() {
     [inWeek, projects]
   );
 
-  const weeklyTarget = 40 * 3600 * 1000;
+  const weeklyTarget = freelanceGoals.weeklyHoursTarget * 3600 * 1000;
   const targetPercent = Math.min(
     100,
-    Math.round((weekTotalMs / weeklyTarget) * 100)
+    Math.round((billableMs / weeklyTarget) * 100)
   );
+  const earningsTarget = freelanceGoals.weeklyEarningsTarget;
+  const earningsPercent =
+    earningsTarget > 0
+      ? Math.min(100, Math.round((weekEarnings / earningsTarget) * 100))
+      : 0;
 
   const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
   const dayData = days.map((d) => {
@@ -151,7 +159,8 @@ export default function DashboardPage() {
           "MMM d, yyyy"
         )}`}
       />
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+      <PageScroll className="p-4 md:p-6 space-y-6">
+        <ScrollReveal>
         {/* KPIs */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
           <Kpi
@@ -188,14 +197,26 @@ export default function DashboardPage() {
           />
           <Kpi
             icon={<Target className="size-5" />}
-            label="Weekly target"
+            label="Hours goal"
             value={`${targetPercent}%`}
-            sub={`${toDecimalHours(weekTotalMs)} / 40h`}
+            sub={`${toDecimalHours(billableMs)} / ${freelanceGoals.weeklyHoursTarget}h billable`}
             tint="violet"
             progress={targetPercent}
           />
+          {earningsTarget > 0 ? (
+            <Kpi
+              icon={<Target className="size-5" />}
+              label="Earnings goal"
+              value={`${earningsPercent}%`}
+              sub={`${formatCurrency(weekEarnings)} / ${formatCurrency(earningsTarget)}`}
+              tint="violet"
+              progress={earningsPercent}
+            />
+          ) : null}
         </div>
+        </ScrollReveal>
 
+        <ScrollReveal delay={80}>
         {/* Charts */}
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">
@@ -315,7 +336,8 @@ export default function DashboardPage() {
             </div>
           </Card>
         </div>
-      </div>
+        </ScrollReveal>
+      </PageScroll>
     </>
   );
 }

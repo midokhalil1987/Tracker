@@ -4,9 +4,12 @@ import * as React from "react";
 import { Plus, Trash2, DollarSign, FolderKanban } from "lucide-react";
 import { useStore, pickDefaultColor } from "@/lib/store";
 import { PageHeader } from "@/components/page-header";
+import { PageScroll } from "@/components/page-scroll";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { useConfirm } from "@/components/confirm-dialog";
+import { useToast } from "@/components/toast";
 import {
   cn,
   computeEarnings,
@@ -35,6 +38,9 @@ export default function ProjectsPage() {
   const addProject = useStore((s) => s.addProject);
   const updateProject = useStore((s) => s.updateProject);
   const deleteProject = useStore((s) => s.deleteProject);
+  const restoreProject = useStore((s) => s.restoreProject);
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const [showForm, setShowForm] = React.useState(false);
   const [name, setName] = React.useState("");
@@ -92,7 +98,7 @@ export default function ProjectsPage() {
           </Button>
         }
       />
-      <div className="p-4 md:p-6 flex-1 overflow-y-auto">
+      <PageScroll className="p-4 md:p-6">
         {showForm ? (
           <Card className="mb-5">
             <div className="p-5 grid gap-4 md:grid-cols-2">
@@ -128,7 +134,7 @@ export default function ProjectsPage() {
                       type="button"
                       onClick={() => setColor(c)}
                       className={cn(
-                        "size-7 rounded-full ring-offset-2 ring-offset-card transition-all",
+                        "size-7 rounded-full ring-offset-2 ring-offset-card transition-all cursor-pointer",
                         color === c
                           ? "ring-2 ring-foreground"
                           : "hover:scale-110"
@@ -239,7 +245,7 @@ export default function ProjectsPage() {
                             updateProject(p.id, { name: v });
                           else e.target.value = p.name;
                         }}
-                        className="flex-1 bg-transparent text-sm font-medium px-2 py-1 -mx-2 rounded hover:bg-card focus:bg-card focus:outline-none focus:ring-2 focus:ring-ring/60 min-w-0"
+                        className="flex-1 bg-transparent text-sm font-medium px-2 py-1 -mx-2 rounded hover:bg-card focus:bg-card focus:outline-none focus:ring-2 focus:ring-ring/60 min-w-0 cursor-text"
                       />
                       <button
                         type="button"
@@ -247,7 +253,7 @@ export default function ProjectsPage() {
                           updateProject(p.id, { billable: !p.billable })
                         }
                         className={cn(
-                          "size-7 grid place-items-center rounded-md shrink-0",
+                          "size-7 grid place-items-center rounded-md shrink-0 cursor-pointer",
                           p.billable
                             ? "text-success bg-success/10"
                             : "text-muted-foreground/40 hover:bg-muted"
@@ -266,7 +272,7 @@ export default function ProjectsPage() {
                             updateProject(p.id, { client: v || undefined });
                         }}
                         placeholder="No client"
-                        className="w-full bg-transparent px-2 py-1 -mx-2 rounded text-muted-foreground hover:bg-card focus:bg-card focus:text-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
+                        className="w-full bg-transparent px-2 py-1 -mx-2 rounded text-muted-foreground hover:bg-card focus:bg-card focus:text-foreground focus:outline-none focus:ring-2 focus:ring-ring/60 cursor-text"
                       />
                     </div>
                     <div className="col-span-1 text-right text-sm">
@@ -291,7 +297,7 @@ export default function ProjectsPage() {
                               next !== undefined ? String(next) : "";
                           }}
                           placeholder="—"
-                          className="w-20 pl-4 pr-1 py-1 text-right rounded bg-transparent hover:bg-card focus:bg-card focus:outline-none focus:ring-2 focus:ring-ring/60 font-mono tabular-nums"
+                          className="w-20 pl-4 pr-1 py-1 text-right rounded bg-transparent hover:bg-card focus:bg-card focus:outline-none focus:ring-2 focus:ring-ring/60 font-mono tabular-nums cursor-text"
                         />
                       </div>
                     </div>
@@ -306,15 +312,25 @@ export default function ProjectsPage() {
                     <div className="col-span-1 flex justify-end opacity-0 group-hover:opacity-100">
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={async () => {
                           if (
-                            confirm(
-                              `Delete project "${p.name}"? Its time entries will be kept but unassigned.`
-                            )
-                          )
+                            await confirm({
+                              title: `Delete project "${p.name}"?`,
+                              description:
+                                "Its time entries will be kept but unassigned.",
+                              confirmLabel: "Delete",
+                              destructive: true,
+                            })
+                          ) {
+                            const snapshot = { ...p };
                             deleteProject(p.id);
+                            toast({
+                              message: `Project "${p.name}" deleted`,
+                              undo: () => restoreProject(snapshot),
+                            });
+                          }
                         }}
-                        className="size-8 grid place-items-center rounded-md text-muted-foreground hover:bg-danger/10 hover:text-danger"
+                        className="size-8 grid place-items-center rounded-md text-muted-foreground hover:bg-danger/10 hover:text-danger cursor-pointer"
                         title="Delete"
                       >
                         <Trash2 className="size-4" />
@@ -326,7 +342,7 @@ export default function ProjectsPage() {
             </div>
           </Card>
         )}
-      </div>
+      </PageScroll>
     </>
   );
 }

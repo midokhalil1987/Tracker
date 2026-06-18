@@ -1,13 +1,13 @@
 import { cn } from "@/lib/utils";
 
-type TempoIconProps = {
+type TimelyIconProps = {
   className?: string;
   /** Show live-tracking accent ring (e.g. when timer is running). */
   active?: boolean;
 };
 
-/** Custom Tempo mark — stopwatch-style, distinct from generic Lucide defaults. */
-export function TempoIcon({ className, active }: TempoIconProps) {
+/** Custom Timely mark — stopwatch-style, distinct from generic Lucide defaults. */
+export function TimelyIcon({ className, active }: TimelyIconProps) {
   return (
     <svg
       viewBox="0 0 24 24"

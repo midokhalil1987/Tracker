@@ -1,4 +1,4 @@
-# Tempo — Time Tracker
+# Timely — Time Tracker
 
 A modern, Clockify-inspired time tracker built with Next.js, React 19, TypeScript, Tailwind CSS 4, Zustand, and Recharts.
 

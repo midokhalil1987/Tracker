@@ -10,10 +10,10 @@ import {
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { TempoIcon } from "@/components/tempo-icon";
+import { TimelyIcon } from "@/components/timely-icon";
 
 const navItems = [
-  { href: "/", label: "Timer", useTempoIcon: true as const },
+  { href: "/", label: "Timer", useTimelyIcon: true as const },
   { href: "/dashboard", label: "Dash", icon: LayoutDashboard },
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/projects", label: "Projects", icon: FolderKanban },
@@ -34,12 +34,12 @@ export function MobileNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex-1 flex flex-col items-center gap-1 py-2 text-xs",
+              "flex-1 flex flex-col items-center gap-1 py-2 text-xs cursor-pointer",
               active ? "text-primary" : "text-muted-foreground"
             )}
           >
-            {"useTempoIcon" in item ? (
-              <TempoIcon className="size-5" />
+            {"useTimelyIcon" in item ? (
+              <TimelyIcon className="size-5" />
             ) : Icon ? (
               <Icon className="size-5" />
             ) : null}

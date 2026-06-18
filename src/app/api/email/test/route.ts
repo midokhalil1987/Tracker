@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyBearer } from "@/lib/server/auth";
 import { isEmailConfigured, sendXlsxEmail } from "@/lib/server/email";
+import { buildEmailReportSummary } from "@/lib/server/email-template";
 import { readWorkspace } from "@/lib/server/workspace-store";
 import { buildXlsxBuffer, xlsxFilenameForDate } from "@/lib/xlsx-export";
 import type { Project, Tag, TimeEntry } from "@/lib/types";
@@ -79,7 +80,18 @@ export async function POST(req: Request) {
     entries: workspace.entries,
   });
 
-  await sendXlsxEmail({ to: workspace.email, filename, buffer });
+  const summary = buildEmailReportSummary(
+    workspace.projects,
+    workspace.tags,
+    workspace.entries
+  );
+
+  await sendXlsxEmail({
+    to: workspace.email,
+    filename,
+    buffer,
+    summary,
+  });
 
   return NextResponse.json({ ok: true, to: workspace.email, filename });
 }

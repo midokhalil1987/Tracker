@@ -2,7 +2,14 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { Project, Tag, TimeEntry, RunningTimer } from "./types";
+import type {
+  Project,
+  Tag,
+  TimeEntry,
+  RunningTimer,
+  LastTimerContext,
+  FreelanceGoals,
+} from "./types";
 import { uid } from "./utils";
 
 const DEFAULT_COLORS = [
@@ -56,6 +63,11 @@ const DEFAULT_EMAIL_REPORTS: EmailReportsSettings = {
   lastSyncedAt: null,
 };
 
+const DEFAULT_FREELANCE_GOALS: FreelanceGoals = {
+  weeklyHoursTarget: 40,
+  weeklyEarningsTarget: 0,
+};
+
 type State = {
   projects: Project[];
   tags: Tag[];
@@ -63,6 +75,8 @@ type State = {
   running: RunningTimer | null;
   reportsFilter: ReportsFilter;
   emailReports: EmailReportsSettings;
+  freelanceGoals: FreelanceGoals;
+  lastTimerContext: LastTimerContext | null;
   hydrated: boolean;
 };
 
@@ -71,15 +85,19 @@ type Actions = {
   addProject: (input: Omit<Project, "id" | "createdAt">) => Project;
   updateProject: (id: string, patch: Partial<Project>) => void;
   deleteProject: (id: string) => void;
+  restoreProject: (project: Project) => void;
 
   // tags
   addTag: (name: string) => Tag;
   deleteTag: (id: string) => void;
+  restoreTag: (tag: Tag) => void;
+  restoreEntryTags: (entryId: string, tagIds: string[]) => void;
 
   // entries
   addEntry: (entry: Omit<TimeEntry, "id">) => TimeEntry;
   updateEntry: (id: string, patch: Partial<TimeEntry>) => void;
   deleteEntry: (id: string) => void;
+  restoreEntry: (entry: TimeEntry) => void;
   duplicateEntry: (id: string) => void;
 
   // timer
@@ -108,6 +126,9 @@ type Actions = {
 
   // email reports
   setEmailReports: (patch: Partial<EmailReportsSettings>) => void;
+
+  // freelance goals
+  setFreelanceGoals: (patch: Partial<FreelanceGoals>) => void;
 };
 
 const DEFAULT_REPORTS_FILTER: ReportsFilter = {
@@ -274,8 +295,16 @@ const initialState: State = {
   running: null,
   reportsFilter: DEFAULT_REPORTS_FILTER,
   emailReports: DEFAULT_EMAIL_REPORTS,
+  freelanceGoals: DEFAULT_FREELANCE_GOALS,
+  lastTimerContext: null,
   hydrated: false,
 };
+
+function saveLastTimerContext(
+  ctx: Omit<LastTimerContext, never>
+): Pick<State, "lastTimerContext"> {
+  return { lastTimerContext: { ...ctx, tagIds: [...ctx.tagIds] } };
+}
 
 export const useStore = create<TimeTrackerStore>()(
   persist(
@@ -304,6 +333,12 @@ export const useStore = create<TimeTrackerStore>()(
             e.projectId === id ? { ...e, projectId: null } : e
           ),
         })),
+      restoreProject: (project) =>
+        set((s) => ({
+          projects: [project, ...s.projects].sort(
+            (a, b) => b.createdAt - a.createdAt
+          ),
+        })),
 
       addTag: (name) => {
         const existing = get().tags.find(
@@ -323,6 +358,16 @@ export const useStore = create<TimeTrackerStore>()(
               : e
           ),
         })),
+      restoreTag: (tag) =>
+        set((s) => ({
+          tags: s.tags.some((t) => t.id === tag.id) ? s.tags : [...s.tags, tag],
+        })),
+      restoreEntryTags: (entryId, tagIds) =>
+        set((s) => ({
+          entries: s.entries.map((e) =>
+            e.id === entryId ? { ...e, tagIds } : e
+          ),
+        })),
 
       addEntry: (entry) => {
         const created: TimeEntry = { id: uid(), ...entry };
@@ -335,6 +380,10 @@ export const useStore = create<TimeTrackerStore>()(
         })),
       deleteEntry: (id) =>
         set((s) => ({ entries: s.entries.filter((e) => e.id !== id) })),
+      restoreEntry: (entry) =>
+        set((s) => ({
+          entries: [entry, ...s.entries].sort((a, b) => b.startedAt - a.startedAt),
+        })),
       duplicateEntry: (id) => {
         const e = get().entries.find((x) => x.id === id);
         if (!e) return;
@@ -363,6 +412,12 @@ export const useStore = create<TimeTrackerStore>()(
             billable: input?.billable ?? false,
             startedAt: Date.now(),
           },
+          ...saveLastTimerContext({
+            description: input?.description ?? "",
+            projectId: input?.projectId ?? null,
+            tagIds: input?.tagIds ?? [],
+            billable: input?.billable ?? false,
+          }),
         });
       },
 
@@ -411,7 +466,16 @@ export const useStore = create<TimeTrackerStore>()(
               endedAt: Date.now(),
             };
 
-        set((s) => ({ entries: [entry, ...s.entries], running: null }));
+        set((s) => ({
+          entries: [entry, ...s.entries],
+          running: null,
+          ...saveLastTimerContext({
+            description: r.description,
+            projectId: r.projectId,
+            tagIds: r.tagIds,
+            billable: r.billable,
+          }),
+        }));
         return entry;
       },
 
@@ -544,10 +608,15 @@ export const useStore = create<TimeTrackerStore>()(
         set((s) => ({
           emailReports: { ...s.emailReports, ...patch },
         })),
+
+      setFreelanceGoals: (patch) =>
+        set((s) => ({
+          freelanceGoals: { ...s.freelanceGoals, ...patch },
+        })),
     }),
     {
       name: "time-tracker-storage-v1",
-      version: 5,
+      version: 6,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         projects: state.projects,
@@ -556,6 +625,8 @@ export const useStore = create<TimeTrackerStore>()(
         running: state.running,
         reportsFilter: state.reportsFilter,
         emailReports: state.emailReports,
+        freelanceGoals: state.freelanceGoals,
+        lastTimerContext: state.lastTimerContext,
       }),
       migrate: (persisted, fromVersion) => {
         const s = (persisted ?? {}) as Partial<State>;
@@ -582,6 +653,10 @@ export const useStore = create<TimeTrackerStore>()(
             ...s.emailReports,
             email: "midokhalil1987@gmail.com",
           };
+        }
+        if (fromVersion < 6) {
+          s.freelanceGoals = s.freelanceGoals ?? DEFAULT_FREELANCE_GOALS;
+          s.lastTimerContext = s.lastTimerContext ?? null;
         }
         return s;
       },

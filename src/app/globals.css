@@ -167,6 +167,75 @@ body {
   .sidebar-timer-badge {
     animation: sidebar-timer-pulse 2s ease-in-out infinite;
   }
+
+  @keyframes dialog-overlay-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes dialog-content-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96) translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .dialog-overlay-in {
+    animation: dialog-overlay-in 0.2s ease-out both;
+  }
+
+  .dialog-content-in {
+    animation: dialog-content-in 0.2s ease-out both;
+  }
+
+  .page-scroll {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
+  @keyframes scroll-reveal-in {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .scroll-reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    will-change: opacity, transform;
+  }
+
+  .scroll-reveal-visible {
+    animation: scroll-reveal-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--reveal-delay, 0ms);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .page-scroll {
+      scroll-behavior: auto;
+    }
+
+    .scroll-reveal,
+    .scroll-reveal-visible {
+      opacity: 1;
+      transform: none;
+      animation: none;
+    }
+  }
 }
 
 input::-webkit-outer-spin-button,
@@ -176,4 +245,49 @@ input::-webkit-inner-spin-button {
 }
 input[type="number"] {
   -moz-appearance: textfield;
+}
+
+/* Unlayered — must beat Tailwind @layer base/utilities cascade */
+a[href],
+button:not(:disabled),
+input[type="button"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+input[type="reset"]:not(:disabled),
+summary,
+select:not(:disabled),
+label:has(input[type="checkbox"]),
+label:has(input[type="radio"]),
+label:has(input[type="file"]),
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+input:disabled,
+textarea:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+input:not([type]):not(:disabled),
+input[type="text"]:not(:disabled),
+input[type="search"]:not(:disabled),
+input[type="email"]:not(:disabled),
+input[type="password"]:not(:disabled),
+input[type="url"]:not(:disabled),
+input[type="tel"]:not(:disabled),
+input[type="number"]:not(:disabled),
+textarea:not(:disabled) {
+  cursor: text;
+}
+
+input[type="date"]:not(:disabled),
+input[type="time"]:not(:disabled),
+input[type="datetime-local"]:not(:disabled),
+input[type="month"]:not(:disabled),
+input[type="week"]:not(:disabled),
+input[type="color"]:not(:disabled) {
+  cursor: pointer;
 }

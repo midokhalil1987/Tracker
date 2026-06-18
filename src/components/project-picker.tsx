@@ -51,7 +51,7 @@ export function ProjectPicker({
         <button
           type="button"
           className={cn(
-            "inline-flex items-center gap-2 px-3 rounded-md border border-input bg-card hover:bg-muted/60",
+            "inline-flex items-center gap-2 px-3 rounded-md border border-input bg-card hover:bg-muted/60 cursor-pointer",
             heightCls,
             className
           )}
@@ -79,7 +79,7 @@ export function ProjectPicker({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search or create project..."
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70 cursor-text"
             autoFocus
           />
           {value ? (
@@ -89,7 +89,7 @@ export function ProjectPicker({
                 onChange(null);
                 setOpen(false);
               }}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground cursor-pointer"
               title="Clear"
             >
               <X className="size-4" />
@@ -111,7 +111,7 @@ export function ProjectPicker({
                   setOpen(false);
                 }}
                 className={cn(
-                  "w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left"
+                  "w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer"
                 )}
               >
                 <span
@@ -141,7 +141,7 @@ export function ProjectPicker({
           <button
             type="button"
             onClick={handleCreate}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm border-t border-border hover:bg-muted text-left"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm border-t border-border hover:bg-muted text-left cursor-pointer"
           >
             <Plus className="size-4 text-primary" />
             <span>

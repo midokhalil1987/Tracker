@@ -1,9 +1,16 @@
 import nodemailer from "nodemailer";
+import { APP_FULL_TITLE, APP_NAME } from "@/lib/brand";
+import type { EmailReportSummary } from "@/lib/server/email-template";
+import {
+  buildTimeReportEmailHtml,
+  buildTimeReportEmailText,
+} from "@/lib/server/email-template";
 
 type SendXlsxEmailInput = {
   to: string;
   filename: string;
   buffer: Buffer;
+  summary: EmailReportSummary;
 };
 
 function getSmtpConfig() {
@@ -27,20 +34,23 @@ export async function sendXlsxEmail({
   to,
   filename,
   buffer,
+  summary,
 }: SendXlsxEmailInput): Promise<void> {
   const from =
     process.env.SMTP_FROM?.trim() ||
-    `Tempo Time Tracker <${process.env.SMTP_USER}>`;
+    `${APP_FULL_TITLE} <${process.env.SMTP_USER}>`;
 
   const transporter = nodemailer.createTransport(getSmtpConfig());
+
+  const text = buildTimeReportEmailText({ filename, summary });
+  const html = buildTimeReportEmailHtml({ filename, summary });
 
   await transporter.sendMail({
     from,
     to,
-    subject: `Tempo time report — ${filename}`,
-    text:
-      "Attached is your latest Tempo time tracker export.\n\n" +
-      "This email is sent automatically on weekdays when email reports are enabled.",
+    subject: `${APP_NAME} time report — ${filename}`,
+    text,
+    html,
     attachments: [
       {
         filename,

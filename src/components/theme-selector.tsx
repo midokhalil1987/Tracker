@@ -45,7 +45,7 @@ export function ThemeSelector() {
             type="button"
             onClick={() => setTheme(id)}
             className={cn(
-              "text-left px-4 py-3 rounded-lg border-2 transition-colors",
+              "text-left px-4 py-3 rounded-lg border-2 transition-colors cursor-pointer",
               active
                 ? "border-primary bg-primary/5"
                 : "border-border hover:border-primary/40 bg-card"

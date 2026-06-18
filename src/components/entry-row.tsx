@@ -21,6 +21,8 @@ import {
   applyTimeToTimestamp,
 } from "@/lib/utils";
 import type { TimeEntry } from "@/lib/types";
+import { useConfirm } from "@/components/confirm-dialog";
+import { useToast } from "@/components/toast";
 import { ProjectPicker } from "./project-picker";
 import { TagPicker } from "./tag-picker";
 
@@ -29,9 +31,12 @@ export function EntryRow({ entry }: { entry: TimeEntry }) {
   const tags = useStore((s) => s.tags);
   const updateEntry = useStore((s) => s.updateEntry);
   const deleteEntry = useStore((s) => s.deleteEntry);
+  const restoreEntry = useStore((s) => s.restoreEntry);
   const duplicateEntry = useStore((s) => s.duplicateEntry);
   const continueEntry = useStore((s) => s.continueEntry);
   const router = useRouter();
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const [editingDesc, setEditingDesc] = React.useState(false);
   const [desc, setDesc] = React.useState(entry.description);
@@ -152,13 +157,13 @@ export function EntryRow({ entry }: { entry: TimeEntry }) {
               }
             }}
             autoFocus
-            className="flex-1 min-w-0 h-9 px-2 rounded-md border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring/60"
+            className="flex-1 min-w-0 h-9 px-2 rounded-md border border-input bg-card text-sm cursor-text focus:outline-none focus:ring-2 focus:ring-ring/60"
           />
         ) : (
           <button
             type="button"
             onClick={() => setEditingDesc(true)}
-            className="flex-1 min-w-0 text-left text-sm truncate hover:text-primary"
+            className="flex-1 min-w-0 text-left text-sm truncate hover:text-primary cursor-pointer"
           >
             {entry.description || (
               <span className="text-muted-foreground italic">
@@ -202,7 +207,7 @@ export function EntryRow({ entry }: { entry: TimeEntry }) {
               value={startTime}
               step={60}
               onChange={(e) => setStartTime(e.target.value)}
-              className="h-8 w-[5.5rem] px-1 text-xs rounded-md border border-input bg-card focus:outline-none focus:ring-2 focus:ring-ring/60"
+              className="h-8 w-[5.5rem] px-1 text-xs rounded-md border border-input bg-card cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring/60"
               aria-label="Start time"
             />
             <span>–</span>
@@ -211,20 +216,20 @@ export function EntryRow({ entry }: { entry: TimeEntry }) {
               value={endTime}
               step={60}
               onChange={(e) => setEndTime(e.target.value)}
-              className="h-8 w-[5.5rem] px-1 text-xs rounded-md border border-input bg-card focus:outline-none focus:ring-2 focus:ring-ring/60"
+              className="h-8 w-[5.5rem] px-1 text-xs rounded-md border border-input bg-card cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring/60"
               aria-label="End time"
             />
             <button
               type="button"
               onClick={commitTimes}
-              className="size-7 grid place-items-center rounded-md text-success hover:bg-success/10"
+              className="size-7 grid place-items-center rounded-md text-success hover:bg-success/10 cursor-pointer"
             >
               <Check className="size-4" />
             </button>
             <button
               type="button"
               onClick={resetTimes}
-              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:bg-muted"
+              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:bg-muted cursor-pointer"
             >
               <X className="size-4" />
             </button>
@@ -233,7 +238,7 @@ export function EntryRow({ entry }: { entry: TimeEntry }) {
           <button
             type="button"
             onClick={() => setEditingTimes(true)}
-            className="flex items-center gap-1 hover:text-primary text-left"
+            className="flex items-center gap-1 hover:text-primary text-left cursor-pointer"
             title={`${new Date(entry.startedAt).toLocaleString()} → ${new Date(
               entry.endedAt
             ).toLocaleString()}`}
@@ -250,7 +255,7 @@ export function EntryRow({ entry }: { entry: TimeEntry }) {
         type="button"
         onClick={() => updateEntry(entry.id, { billable: !entry.billable })}
         className={cn(
-          "hidden md:grid size-7 place-items-center rounded-md shrink-0",
+          "hidden md:grid size-7 place-items-center rounded-md shrink-0 cursor-pointer",
           entry.billable
             ? "text-success bg-success/10"
             : "text-muted-foreground/40 hover:bg-muted"
@@ -279,28 +284,31 @@ export function EntryRow({ entry }: { entry: TimeEntry }) {
                 }
               }}
               autoFocus
-              className="h-8 w-24 px-2 text-sm rounded-md border border-input bg-card font-mono tabular-nums focus:outline-none focus:ring-2 focus:ring-ring/60"
+              className="h-8 w-24 px-2 text-sm rounded-md border border-input bg-card font-mono tabular-nums cursor-text focus:outline-none focus:ring-2 focus:ring-ring/60"
             />
             <button
+              type="button"
               onClick={commitDuration}
-              className="size-7 grid place-items-center rounded-md text-success hover:bg-success/10"
+              className="size-7 grid place-items-center rounded-md text-success hover:bg-success/10 cursor-pointer"
             >
               <Check className="size-4" />
             </button>
             <button
+              type="button"
               onClick={() => {
                 setDuration(formatDuration(ms));
                 setEditingDuration(false);
               }}
-              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:bg-muted"
+              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:bg-muted cursor-pointer"
             >
               <X className="size-4" />
             </button>
           </div>
         ) : (
           <button
+            type="button"
             onClick={() => setEditingDuration(true)}
-            className="font-mono tabular-nums text-sm font-semibold w-20 text-right hover:text-primary"
+            className="font-mono tabular-nums text-sm font-semibold w-20 text-right hover:text-primary cursor-pointer"
           >
             {formatDuration(ms)}
           </button>
@@ -311,7 +319,7 @@ export function EntryRow({ entry }: { entry: TimeEntry }) {
         <button
           type="button"
           onClick={handleContinue}
-          className="size-8 grid place-items-center rounded-md hover:bg-muted text-muted-foreground hover:text-primary"
+          className="size-8 grid place-items-center rounded-md hover:bg-muted text-muted-foreground hover:text-primary cursor-pointer"
           title="Continue this entry"
         >
           <Play className="size-4 fill-current" />
@@ -319,17 +327,31 @@ export function EntryRow({ entry }: { entry: TimeEntry }) {
         <button
           type="button"
           onClick={() => duplicateEntry(entry.id)}
-          className="size-8 grid place-items-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
+          className="size-8 grid place-items-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
           title="Duplicate"
         >
           <Copy className="size-4" />
         </button>
         <button
           type="button"
-          onClick={() => {
-            if (confirm("Delete this time entry?")) deleteEntry(entry.id);
+          onClick={async () => {
+            if (
+              await confirm({
+                title: "Delete time entry?",
+                description: "This entry will be removed permanently.",
+                confirmLabel: "Delete",
+                destructive: true,
+              })
+            ) {
+              const snapshot = { ...entry, tagIds: [...entry.tagIds] };
+              deleteEntry(entry.id);
+              toast({
+                message: "Time entry deleted",
+                undo: () => restoreEntry(snapshot),
+              });
+            }
           }}
-          className="size-8 grid place-items-center rounded-md hover:bg-danger/10 text-muted-foreground hover:text-danger"
+          className="size-8 grid place-items-center rounded-md hover:bg-danger/10 text-muted-foreground hover:text-danger cursor-pointer"
           title="Delete"
         >
           <Trash2 className="size-4" />

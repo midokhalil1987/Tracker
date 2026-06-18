@@ -90,7 +90,7 @@ function MonthPanel({
                 if (pending) onDayHover(d);
               }}
               className={cn(
-                "relative h-8 text-xs flex items-center justify-center",
+                "relative h-8 text-xs flex items-center justify-center cursor-pointer",
                 !inMonth && "text-muted-foreground/40",
                 inMonth && !isEndpoint && !isInside && "hover:bg-muted rounded",
                 isInside && "bg-primary/10",
@@ -156,7 +156,7 @@ export function DateRangePicker({ value, onChange, className }: Props) {
         <button
           type="button"
           onClick={() => setViewMonth(addMonths(viewMonth, -1))}
-          className="size-7 grid place-items-center rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+          className="size-7 grid place-items-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
           aria-label="Previous month"
         >
           <ChevronLeft className="size-4" />
@@ -167,7 +167,7 @@ export function DateRangePicker({ value, onChange, className }: Props) {
         <button
           type="button"
           onClick={() => setViewMonth(addMonths(viewMonth, 1))}
-          className="size-7 grid place-items-center rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+          className="size-7 grid place-items-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
           aria-label="Next month"
         >
           <ChevronRight className="size-4" />
@@ -219,7 +219,7 @@ export function DateRangePicker({ value, onChange, className }: Props) {
               setPending(null);
               setHover(null);
             }}
-            className="text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground cursor-pointer"
           >
             Reset
           </button>

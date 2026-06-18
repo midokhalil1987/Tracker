@@ -33,3 +33,19 @@ export type RunningTimer = {
   /** Original entry being resumed; removed from the list until stop/discard. */
   resumedEntry?: TimeEntry;
 };
+
+/** Last timer draft — used for "Resume" on the home screen. */
+export type LastTimerContext = {
+  description: string;
+  projectId: string | null;
+  tagIds: string[];
+  billable: boolean;
+};
+
+/** Personal freelance targets (solo use). */
+export type FreelanceGoals = {
+  /** Target billable/tracked hours per week (e.g. 40). */
+  weeklyHoursTarget: number;
+  /** Optional weekly earnings goal in workspace currency. 0 = hidden. */
+  weeklyEarningsTarget: number;
+};

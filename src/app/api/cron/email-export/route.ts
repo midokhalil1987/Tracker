@@ -6,6 +6,7 @@ import {
   todayKey,
 } from "@/lib/server/cron";
 import { isEmailConfigured, sendXlsxEmail } from "@/lib/server/email";
+import { buildEmailReportSummary } from "@/lib/server/email-template";
 import {
   markEmailSent,
   readWorkspace,
@@ -66,10 +67,17 @@ export async function GET(req: Request) {
     entries: workspace.entries,
   });
 
+  const summary = buildEmailReportSummary(
+    workspace.projects,
+    workspace.tags,
+    workspace.entries
+  );
+
   await sendXlsxEmail({
     to: workspace.email,
     filename,
     buffer,
+    summary,
   });
   await markEmailSent();
 

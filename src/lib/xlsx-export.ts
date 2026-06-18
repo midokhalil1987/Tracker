@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { APP_FULL_TITLE } from "@/lib/brand";
 import type { Project, Tag, TimeEntry } from "./types";
 import { toDateInputValue } from "./utils";
 import {
@@ -67,7 +68,7 @@ export async function buildXlsxBuffer({
   entries,
 }: ExportInput): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Tempo Time Tracker";
+  wb.creator = APP_FULL_TITLE;
   wb.created = new Date();
 
   const wsProjects = wb.addWorksheet(XLSX_SHEETS.PROJECTS, {

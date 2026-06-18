@@ -6,8 +6,13 @@ import { Sidebar } from "@/components/sidebar";
 import { MobileNav } from "@/components/mobile-nav";
 import { DocumentTitle } from "@/components/document-title";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ConfirmDialogProvider } from "@/components/confirm-dialog";
+import { ToastProvider } from "@/components/toast";
+import { CommandPaletteProvider } from "@/components/command-palette";
+import { RouteScrollRestorer } from "@/components/route-scroll-restorer";
 import { DataSync } from "@/components/data-sync";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import { APP_FULL_TITLE, APP_DESCRIPTION } from "@/lib/brand";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,9 +25,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tempo · Time Tracker",
-  description:
-    "A simple, modern time tracker for projects, tasks and reports.",
+  title: APP_FULL_TITLE,
+  description: APP_DESCRIPTION,
 };
 
 export default function RootLayout({
@@ -43,15 +47,22 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
         />
         <ThemeProvider>
-          <DocumentTitle />
-          <DataSync />
-          <div className="flex h-svh overflow-hidden">
-            <Sidebar />
-            <main className="flex flex-1 flex-col min-w-0 min-h-0 overflow-hidden pb-16 md:pb-0">
-              {children}
-            </main>
-          </div>
-          <MobileNav />
+          <ConfirmDialogProvider>
+            <ToastProvider>
+              <CommandPaletteProvider>
+                <DocumentTitle />
+                <RouteScrollRestorer />
+                <DataSync />
+                <div className="flex h-svh overflow-hidden">
+                  <Sidebar />
+                  <main className="flex flex-1 flex-col min-w-0 min-h-0 overflow-hidden pb-16 md:pb-0">
+                    {children}
+                  </main>
+                </div>
+                <MobileNav />
+              </CommandPaletteProvider>
+            </ToastProvider>
+          </ConfirmDialogProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -123,7 +123,7 @@ function WeekSection({
         onClick={onToggle}
         aria-expanded={!isCollapsed}
         className={cn(
-          "w-full flex items-center justify-between gap-3 px-4 md:px-5 h-12",
+          "w-full flex items-center justify-between gap-3 px-4 md:px-5 h-12 cursor-pointer",
           "hover:brightness-[1.03] transition-all text-left"
         )}
         style={{
