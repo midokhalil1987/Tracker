@@ -66,14 +66,6 @@ function getPresetRange(
         end: endOfWeek(lw, { weekStartsOn: 1 }),
       };
     }
-    case "last2Weeks": {
-      // The two ISO weeks before this one — i.e. Monday 14 days ago through
-      // last Sunday (the day before this Monday).
-      const thisMonday = startOfWeek(now, { weekStartsOn: 1 });
-      const start = subDays(thisMonday, 14);
-      const end = endOfDay(subDays(thisMonday, 1));
-      return { start, end };
-    }
     case "month":
       return { start: startOfMonth(now), end: endOfMonth(now) };
     case "30d":
@@ -86,7 +78,6 @@ const PRESETS: { id: ReportsPreset; label: string }[] = [
   { id: "yesterday", label: "Yesterday" },
   { id: "week", label: "This week" },
   { id: "lastWeek", label: "Last week" },
-  { id: "last2Weeks", label: "Last 2 weeks" },
   { id: "month", label: "This month" },
   { id: "30d", label: "Last 30 days" },
 ];
@@ -117,25 +108,24 @@ export default function ReportsPage() {
   }, [preset, customFrom, customTo]);
 
   const filtered = React.useMemo(() => {
+    const rangeStart = range.start.getTime();
+    const rangeEnd = range.end.getTime();
     return entries.filter((e) => {
-      // Include an entry if any part of it overlaps the range — so a multi-day
-      // entry that starts on day X and ends on day Y still appears when X or
-      // Y (or anything in between) falls inside the chosen range.
-      if (e.endedAt < range.start.getTime()) return false;
-      if (e.startedAt > range.end.getTime()) return false;
+      // Attribute each entry to the day it started (matches the chart).
+      if (e.startedAt < rangeStart) return false;
+      if (e.startedAt > rangeEnd) return false;
       if (projectFilter && e.projectId !== projectFilter) return false;
       if (billableOnly && !e.billable) return false;
       return true;
     });
   }, [entries, range, projectFilter, billableOnly]);
 
-  const totalMs = filtered.reduce(
-    (acc, e) => acc + (e.endedAt - e.startedAt),
-    0
-  );
+  const entryMs = (e: (typeof filtered)[number]) => e.endedAt - e.startedAt;
+
+  const totalMs = filtered.reduce((acc, e) => acc + entryMs(e), 0);
   const billableMs = filtered
     .filter((e) => e.billable)
-    .reduce((acc, e) => acc + (e.endedAt - e.startedAt), 0);
+    .reduce((acc, e) => acc + entryMs(e), 0);
   const earnings = React.useMemo(
     () => computeEarnings(filtered, projects),
     [filtered, projects]
@@ -152,7 +142,7 @@ export default function ReportsPage() {
     const de = endOfDay(d).getTime();
     const ms = filtered
       .filter((e) => e.startedAt >= ds && e.startedAt <= de)
-      .reduce((acc, e) => acc + (e.endedAt - e.startedAt), 0);
+      .reduce((acc, e) => acc + entryMs(e), 0);
     return {
       key: format(d, "yyyy-MM-dd"),
       label: format(d, days.length > 14 ? "MMM d" : "EEE"),
@@ -166,7 +156,7 @@ export default function ReportsPage() {
     const m = new Map<string, number>();
     let unassigned = 0;
     for (const e of filtered) {
-      const ms = e.endedAt - e.startedAt;
+      const ms = entryMs(e);
       if (!e.projectId) unassigned += ms;
       else m.set(e.projectId, (m.get(e.projectId) ?? 0) + ms);
     }

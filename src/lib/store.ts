@@ -34,7 +34,6 @@ export type ReportsPreset =
   | "yesterday"
   | "week"
   | "lastWeek"
-  | "last2Weeks"
   | "month"
   | "30d"
   | "custom";
@@ -616,7 +615,7 @@ export const useStore = create<TimeTrackerStore>()(
     }),
     {
       name: "time-tracker-storage-v1",
-      version: 6,
+      version: 7,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         projects: state.projects,
@@ -657,6 +656,12 @@ export const useStore = create<TimeTrackerStore>()(
         if (fromVersion < 6) {
           s.freelanceGoals = s.freelanceGoals ?? DEFAULT_FREELANCE_GOALS;
           s.lastTimerContext = s.lastTimerContext ?? null;
+        }
+        if (
+          fromVersion < 7 &&
+          (s.reportsFilter?.preset as string | undefined) === "last2Weeks"
+        ) {
+          s.reportsFilter = { ...s.reportsFilter!, preset: "lastWeek" };
         }
         return s;
       },
