@@ -19,6 +19,7 @@ import {
 import { ProjectPicker } from "./project-picker";
 import { TagPicker } from "./tag-picker";
 import { CommandPaletteHint } from "./command-palette";
+import { DescriptionField } from "./description-field";
 
 export function TimerBar() {
   const running = useStore((s) => s.running);
@@ -74,6 +75,9 @@ export function TimerBar() {
   const projectId = running ? running.projectId : draftProject;
   const tagIds = running ? running.tagIds : draftTags;
   const billable = running ? running.billable : draftBillable;
+  const activeProject = projectId
+    ? projects.find((p) => p.id === projectId)
+    : undefined;
 
   const setDescription = (v: string) =>
     running ? updateRunning({ description: v }) : setDraftDesc(v);
@@ -205,13 +209,16 @@ export function TimerBar() {
       ) : null}
 
       <div className="px-4 md:px-6 py-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-3">
-        <input
+        <DescriptionField
+          variant="bar"
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onSave={setDescription}
           placeholder="What are you working on?"
-          className="flex-1 min-w-0 h-11 px-3 rounded-md bg-transparent border border-input focus:outline-none focus:ring-2 focus:ring-ring/60 focus:border-transparent text-sm md:text-base cursor-text"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && mode === "timer" && !running) handleStart();
+          projectId={projectId}
+          projectName={activeProject?.name}
+          durationMs={running ? elapsed : undefined}
+          onEnter={() => {
+            if (mode === "timer" && !running) handleStart();
           }}
         />
         <div className="flex flex-wrap items-center gap-2">

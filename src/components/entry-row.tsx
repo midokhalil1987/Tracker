@@ -25,6 +25,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast";
 import { ProjectPicker } from "./project-picker";
 import { TagPicker } from "./tag-picker";
+import { DescriptionField } from "./description-field";
 
 export function EntryRow({ entry }: { entry: TimeEntry }) {
   const projects = useStore((s) => s.projects);
@@ -38,19 +39,8 @@ export function EntryRow({ entry }: { entry: TimeEntry }) {
   const confirm = useConfirm();
   const toast = useToast();
 
-  const [editingDesc, setEditingDesc] = React.useState(false);
-  const [desc, setDesc] = React.useState(entry.description);
-  const [lastSyncedDesc, setLastSyncedDesc] = React.useState(
-    entry.description
-  );
-  if (!editingDesc && entry.description !== lastSyncedDesc) {
-    setLastSyncedDesc(entry.description);
-    setDesc(entry.description);
-  }
-
   const project = projects.find((p) => p.id === entry.projectId);
   const entryTags = tags.filter((t) => entry.tagIds.includes(t.id));
-
   const ms = entry.endedAt - entry.startedAt;
 
   const [editingDuration, setEditingDuration] = React.useState(false);
@@ -79,11 +69,6 @@ export function EntryRow({ entry }: { entry: TimeEntry }) {
     setStartTime(toTimeInputValue(entry.startedAt));
     setEndTime(toTimeInputValue(entry.endedAt));
   }
-
-  const commitDesc = () => {
-    setEditingDesc(false);
-    if (desc !== entry.description) updateEntry(entry.id, { description: desc });
-  };
 
   const commitDuration = () => {
     setEditingDuration(false);
@@ -144,34 +129,15 @@ export function EntryRow({ entry }: { entry: TimeEntry }) {
   return (
     <div className="group flex items-center gap-2 md:gap-3 px-3 md:px-5 py-3 hover:bg-muted/40">
       <div className="flex-1 min-w-0 flex items-center gap-2 md:gap-3">
-        {editingDesc ? (
-          <input
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-            onBlur={commitDesc}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") commitDesc();
-              if (e.key === "Escape") {
-                setDesc(entry.description);
-                setEditingDesc(false);
-              }
-            }}
-            autoFocus
-            className="flex-1 min-w-0 h-9 px-2 rounded-md border border-input bg-card text-sm cursor-text focus:outline-none focus:ring-2 focus:ring-ring/60"
-          />
-        ) : (
-          <button
-            type="button"
-            onClick={() => setEditingDesc(true)}
-            className="flex-1 min-w-0 text-left text-sm truncate hover:text-primary cursor-pointer"
-          >
-            {entry.description || (
-              <span className="text-muted-foreground italic">
-                Add description
-              </span>
-            )}
-          </button>
-        )}
+        <DescriptionField
+          variant="row"
+          value={entry.description}
+          onSave={(description) => updateEntry(entry.id, { description })}
+          placeholder="Add description"
+          projectId={entry.projectId}
+          projectName={project?.name}
+          durationMs={ms}
+        />
         <div className="hidden md:flex items-center gap-2 shrink-0">
           <ProjectPicker
             value={entry.projectId}
