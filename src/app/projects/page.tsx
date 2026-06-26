@@ -7,6 +7,8 @@ import { PageHeader } from "@/components/page-header";
 import { PageScroll } from "@/components/page-scroll";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormField } from "@/components/ui/form-field";
+import { FieldLabel } from "@/components/ui/field-label";
 import { Card } from "@/components/ui/card";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast";
@@ -102,31 +104,25 @@ export default function ProjectsPage() {
         {showForm ? (
           <Card className="mb-5">
             <div className="p-5 grid gap-4 md:grid-cols-2">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Name
-                </label>
+              <FormField>
+                <FieldLabel>Name</FieldLabel>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Website Redesign"
                   autoFocus
                 />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Client (optional)
-                </label>
+              </FormField>
+              <FormField>
+                <FieldLabel>Client (optional)</FieldLabel>
                 <Input
                   value={client}
                   onChange={(e) => setClient(e.target.value)}
                   placeholder="e.g. Acme Inc."
                 />
-              </div>
-              <div className="space-y-1.5 md:col-span-2">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Color
-                </label>
+              </FormField>
+              <FormField className="md:col-span-2">
+                <FieldLabel>Color</FieldLabel>
                 <div className="flex flex-wrap gap-2">
                   {PALETTE.map((c) => (
                     <button
@@ -144,11 +140,9 @@ export default function ProjectsPage() {
                     />
                   ))}
                 </div>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Hourly rate (USD)
-                </label>
+              </FormField>
+              <FormField>
+                <FieldLabel>Hourly rate (USD)</FieldLabel>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
                     $
@@ -164,11 +158,9 @@ export default function ProjectsPage() {
                     className="pl-7"
                   />
                 </div>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Defaults
-                </label>
+              </FormField>
+              <FormField>
+                <FieldLabel>Defaults</FieldLabel>
                 <label className="inline-flex items-center gap-2 text-sm cursor-pointer h-9">
                   <input
                     type="checkbox"
@@ -178,7 +170,7 @@ export default function ProjectsPage() {
                   />
                   <span>Billable by default</span>
                 </label>
-              </div>
+              </FormField>
               <div className="md:col-span-2 flex items-center justify-end gap-2">
                 <Button variant="ghost" onClick={() => setShowForm(false)}>
                   Cancel
@@ -222,7 +214,7 @@ export default function ProjectsPage() {
                     className="grid grid-cols-12 px-5 py-3 items-center hover:bg-muted/40 group"
                   >
                     <div className="col-span-5 flex items-center gap-3 min-w-0">
-                      <div className="relative">
+                      <div className="relative shrink-0">
                         <input
                           type="color"
                           value={p.color}
@@ -237,31 +229,33 @@ export default function ProjectsPage() {
                           style={{ background: p.color }}
                         />
                       </div>
-                      <input
-                        defaultValue={p.name}
-                        onBlur={(e) => {
-                          const v = e.target.value.trim();
-                          if (v && v !== p.name)
-                            updateProject(p.id, { name: v });
-                          else e.target.value = p.name;
-                        }}
-                        className="flex-1 bg-transparent text-sm font-medium px-2 py-1 -mx-2 rounded hover:bg-card focus:bg-card focus:outline-none focus:ring-2 focus:ring-ring/60 min-w-0 cursor-text"
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateProject(p.id, { billable: !p.billable })
-                        }
-                        className={cn(
-                          "size-7 grid place-items-center rounded-md shrink-0 cursor-pointer",
-                          p.billable
-                            ? "text-success bg-success/10"
-                            : "text-muted-foreground/40 hover:bg-muted"
-                        )}
-                        title={p.billable ? "Billable" : "Not billable"}
-                      >
-                        <DollarSign className="size-4" />
-                      </button>
+                      <div className="flex flex-1 items-center gap-[3px] min-w-0 isolate">
+                        <input
+                          defaultValue={p.name}
+                          onBlur={(e) => {
+                            const v = e.target.value.trim();
+                            if (v && v !== p.name)
+                              updateProject(p.id, { name: v });
+                            else e.target.value = p.name;
+                          }}
+                          className="relative z-0 flex-1 min-w-0 bg-transparent text-sm font-medium pl-2 pr-2 py-1 -ml-2 rounded hover:bg-card focus:bg-card focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring/60 cursor-text"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateProject(p.id, { billable: !p.billable })
+                          }
+                          className={cn(
+                            "relative z-10 size-7 grid place-items-center rounded-md shrink-0 cursor-pointer",
+                            p.billable
+                              ? "text-success bg-success/10"
+                              : "text-muted-foreground/40 hover:bg-muted"
+                          )}
+                          title={p.billable ? "Billable" : "Not billable"}
+                        >
+                          <DollarSign className="size-4" />
+                        </button>
+                      </div>
                     </div>
                     <div className="col-span-3 text-sm">
                       <input
@@ -272,7 +266,7 @@ export default function ProjectsPage() {
                             updateProject(p.id, { client: v || undefined });
                         }}
                         placeholder="No client"
-                        className="w-full bg-transparent px-2 py-1 -mx-2 rounded text-muted-foreground hover:bg-card focus:bg-card focus:text-foreground focus:outline-none focus:ring-2 focus:ring-ring/60 cursor-text"
+                        className="w-full bg-transparent pl-2 pr-2 py-1 -mr-2 rounded text-muted-foreground hover:bg-card focus:bg-card focus:text-foreground focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring/60 cursor-text"
                       />
                     </div>
                     <div className="col-span-1 text-right text-sm">

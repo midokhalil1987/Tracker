@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
+import { FieldLabel } from "@/components/ui/field-label";
 import {
   getDescriptionSuggestions,
   getDescriptionTemplates,
@@ -266,10 +268,10 @@ export function DescriptionEditorModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          <div className="relative">
-            <label htmlFor="description-editor-input" className="sr-only">
+          <FormField className="relative">
+            <FieldLabel htmlFor="description-editor-input">
               Description
-            </label>
+            </FieldLabel>
             <textarea
               ref={textareaRef}
               id="description-editor-input"
@@ -288,7 +290,7 @@ export function DescriptionEditorModal({
               aria-controls={showAutocomplete ? listId : undefined}
               aria-expanded={showAutocomplete}
             />
-            <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
+            <div className="flex justify-between text-[11px] text-muted-foreground">
               <span>⌘↵ to save</span>
               <span>{draft.length} chars</span>
             </div>
@@ -316,7 +318,7 @@ export function DescriptionEditorModal({
                 ))}
               </ul>
             ) : null}
-          </div>
+          </FormField>
 
           {quickPicks.length > 0 ? (
             <div>

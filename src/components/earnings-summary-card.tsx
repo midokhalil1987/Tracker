@@ -9,12 +9,14 @@ const STORAGE_KEY = "timely-reports-earnings-visible";
 
 type EarningsSummaryCardProps = {
   earnings: number;
+  label?: string;
   subtitle?: string;
   className?: string;
 };
 
 export function EarningsSummaryCard({
   earnings,
+  label = "Earnings",
   subtitle = "billable × project rate",
   className,
 }: EarningsSummaryCardProps) {
@@ -30,6 +32,9 @@ export function EarningsSummaryCard({
   }, []);
 
   const formatted = formatCurrency(earnings);
+  const copyValue = new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 2,
+  }).format(earnings);
 
   const toggleVisible = () => {
     setVisible((v) => {
@@ -45,7 +50,7 @@ export function EarningsSummaryCard({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(formatted);
+      await navigator.clipboard.writeText(copyValue);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -57,7 +62,7 @@ export function EarningsSummaryCard({
     <Card className={className}>
       <div className="p-5">
         <div className="flex items-center justify-between gap-2 mb-1">
-          <p className="text-sm text-muted-foreground">Earnings</p>
+          <p className="text-sm text-muted-foreground">{label}</p>
           <div className="flex items-center gap-0.5 shrink-0">
             {visible ? (
               <button

@@ -8,6 +8,7 @@ import {
   BarChart3,
   Tag as TagIcon,
   Settings,
+  ScrollText,
   Play,
   Square,
   Search,
@@ -115,6 +116,14 @@ export function CommandPaletteProvider({
         keywords: "export csv billable",
         icon: <BarChart3 className="size-4" />,
         action: () => go("/reports"),
+      },
+      {
+        id: "nav-descriptions",
+        label: "Work Log",
+        group: "Go to",
+        keywords: "descriptions export markdown work log notes",
+        icon: <ScrollText className="size-4" />,
+        action: () => go("/descriptions"),
       },
       {
         id: "nav-projects",

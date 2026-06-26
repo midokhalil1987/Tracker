@@ -15,7 +15,7 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "shrink-0 h-16 px-4 md:px-6 border-b border-border bg-card flex items-center justify-between gap-3",
+        "shrink-0 h-[4.25rem] px-4 md:px-6 border-b border-border bg-card flex items-center justify-between gap-3",
         className
       )}
     >

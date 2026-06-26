@@ -8,6 +8,7 @@ import {
   BarChart3,
   Tag as TagIcon,
   Settings,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TimelyIcon } from "@/components/timely-icon";
@@ -16,6 +17,7 @@ const navItems = [
   { href: "/", label: "Timer", useTimelyIcon: true as const },
   { href: "/dashboard", label: "Dash", icon: LayoutDashboard },
   { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/descriptions", label: "Log", icon: ScrollText },
   { href: "/projects", label: "Projects", icon: FolderKanban },
   { href: "/tags", label: "Tags", icon: TagIcon },
   { href: "/settings", label: "Settings", icon: Settings },

@@ -16,6 +16,8 @@ import { ScrollRevealGroup } from "@/components/scroll-reveal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormField } from "@/components/ui/form-field";
+import { FieldLabel } from "@/components/ui/field-label";
 import { ThemeSelector } from "@/components/theme-selector";
 import { cn } from "@/lib/utils";
 import { exportToXlsx, importFromXlsx, type ImportResult } from "@/lib/xlsx";
@@ -253,10 +255,8 @@ export default function SettingsPage() {
             </p>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">
-                Billable hours / week
-              </label>
+            <FormField>
+              <FieldLabel>Billable hours / week</FieldLabel>
               <Input
                 type="number"
                 min={1}
@@ -270,11 +270,9 @@ export default function SettingsPage() {
                   }
                 }}
               />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">
-                Earnings goal / week (optional)
-              </label>
+            </FormField>
+            <FormField>
+              <FieldLabel>Earnings goal / week (optional)</FieldLabel>
               <Input
                 type="number"
                 min={0}
@@ -294,7 +292,7 @@ export default function SettingsPage() {
               <p className="text-xs text-muted-foreground">
                 Uses project hourly rates on billable entries.
               </p>
-            </div>
+            </FormField>
           </CardContent>
         </Card>
 
@@ -344,22 +342,18 @@ export default function SettingsPage() {
               </span>
             </label>
 
-            <div className="space-y-2">
-              <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Recipient email
-              </label>
+            <FormField>
+              <FieldLabel section>Recipient email</FieldLabel>
               <Input
                 type="email"
                 value={emailReports.email}
                 onChange={(e) => setEmailReports({ email: e.target.value })}
                 placeholder="midokhalil1987@gmail.com"
               />
-            </div>
+            </FormField>
 
-            <div className="space-y-2">
-              <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Sync secret
-              </label>
+            <FormField>
+              <FieldLabel section>Sync secret</FieldLabel>
               <Input
                 type="password"
                 value={emailReports.syncSecret}
@@ -374,7 +368,7 @@ export default function SettingsPage() {
                 Settings → Environment Variables (same value here). Sync also
                 needs Upstash Redis — see steps below if sync fails.
               </p>
-            </div>
+            </FormField>
 
             <details className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
               <summary className="cursor-pointer font-medium text-foreground">
@@ -494,10 +488,8 @@ export default function SettingsPage() {
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
-                Import mode
-              </p>
+            <FormField>
+              <FieldLabel section>Import mode</FieldLabel>
               <div className="flex flex-wrap gap-2">
                 <ModeOption
                   active={mode === "merge"}
@@ -513,7 +505,7 @@ export default function SettingsPage() {
                   destructive
                 />
               </div>
-            </div>
+            </FormField>
 
             <label
               className={cn(

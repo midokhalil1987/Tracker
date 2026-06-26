@@ -22,7 +22,7 @@ export function CardHeader({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("px-5 pt-5 pb-3 flex flex-col gap-1", className)}
+      className={cn("px-5 pt-5 pb-3 flex flex-col gap-2", className)}
       {...props}
     />
   );

@@ -8,6 +8,8 @@ import { PageScroll } from "@/components/page-scroll";
 import { ScrollReveal } from "@/components/scroll-reveal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormField } from "@/components/ui/form-field";
+import { FieldLabel } from "@/components/ui/field-label";
 import { Card } from "@/components/ui/card";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast";
@@ -48,10 +50,8 @@ export default function TagsPage() {
         <ScrollReveal>
         <Card>
           <div className="p-5 flex flex-col sm:flex-row gap-3 sm:items-end">
-            <div className="flex-1 space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">
-                New tag
-              </label>
+            <FormField className="flex-1">
+              <FieldLabel>New tag</FieldLabel>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -60,7 +60,7 @@ export default function TagsPage() {
                 }}
                 placeholder="e.g. urgent, research, qa"
               />
-            </div>
+            </FormField>
             <Button onClick={handleAdd} disabled={!name.trim()}>
               <Plus className="size-4" /> Add tag
             </Button>

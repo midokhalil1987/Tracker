@@ -20,6 +20,8 @@ import { ProjectPicker } from "./project-picker";
 import { TagPicker } from "./tag-picker";
 import { CommandPaletteHint } from "./command-palette";
 import { DescriptionField } from "./description-field";
+import { FormField } from "@/components/ui/form-field";
+import { FieldLabel } from "@/components/ui/field-label";
 
 export function TimerBar() {
   const running = useStore((s) => s.running);
@@ -221,7 +223,7 @@ export function TimerBar() {
             if (mode === "timer" && !running) handleStart();
           }}
         />
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-end gap-2">
           <CommandPaletteHint />
           <ProjectPicker value={projectId} onChange={setProject} />
           <TagPicker value={tagIds} onChange={setTags} />
@@ -347,28 +349,38 @@ export function TimerBar() {
             </>
           ) : (
             <>
-              <input
-                type="date"
-                value={manualDate}
-                onChange={(e) => setManualDate(e.target.value)}
-                className="h-11 px-3 rounded-md border border-input bg-card text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring/60"
-                title="Start date"
-              />
-              <input
-                type="time"
-                value={manualStartTime}
-                step={60}
-                onChange={(e) => setManualStartTime(e.target.value)}
-                className="h-11 px-3 rounded-md border border-input bg-card text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring/60"
-                title="Start time"
-              />
-              <input
-                value={manualDuration}
-                onChange={(e) => setManualDuration(e.target.value)}
-                placeholder="HH:MM:SS"
-                className="h-11 px-3 w-32 text-center rounded-md border border-input bg-card font-mono tabular-nums text-base cursor-text focus:outline-none focus:ring-2 focus:ring-ring/60"
-                title="Duration (supports spanning past midnight, e.g. 10:00:00)"
-              />
+              <FormField className="shrink-0">
+                <FieldLabel htmlFor="manual-entry-date">Date</FieldLabel>
+                <input
+                  id="manual-entry-date"
+                  type="date"
+                  value={manualDate}
+                  onChange={(e) => setManualDate(e.target.value)}
+                  className="h-11 px-3 rounded-md border border-input bg-card text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring/60"
+                />
+              </FormField>
+              <FormField className="shrink-0">
+                <FieldLabel htmlFor="manual-entry-time">Start time</FieldLabel>
+                <input
+                  id="manual-entry-time"
+                  type="time"
+                  value={manualStartTime}
+                  step={60}
+                  onChange={(e) => setManualStartTime(e.target.value)}
+                  className="h-11 px-3 rounded-md border border-input bg-card text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring/60"
+                />
+              </FormField>
+              <FormField className="shrink-0">
+                <FieldLabel htmlFor="manual-entry-duration">Duration</FieldLabel>
+                <input
+                  id="manual-entry-duration"
+                  value={manualDuration}
+                  onChange={(e) => setManualDuration(e.target.value)}
+                  placeholder="HH:MM:SS"
+                  className="h-11 px-3 w-32 text-center rounded-md border border-input bg-card font-mono tabular-nums text-base cursor-text focus:outline-none focus:ring-2 focus:ring-ring/60"
+                  title="Supports spanning past midnight, e.g. 10:00:00"
+                />
+              </FormField>
               <button
                 type="button"
                 onClick={handleAddManual}

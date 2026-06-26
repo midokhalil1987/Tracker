@@ -11,6 +11,7 @@ import {
   Tag as TagIcon,
   Settings,
   Sparkles,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRunningElapsed } from "@/hooks/use-running-elapsed";
@@ -21,6 +22,7 @@ const navItems = [
   { href: "/", label: "Timer", useTimelyIcon: true as const },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/descriptions", label: "Work Log", icon: ScrollText },
   { href: "/projects", label: "Projects", icon: FolderKanban },
   { href: "/tags", label: "Tags", icon: TagIcon },
   { href: "/settings", label: "Settings", icon: Settings },

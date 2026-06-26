@@ -14,24 +14,28 @@ import {
   CartesianGrid,
 } from "recharts";
 import {
-  startOfWeek,
-  endOfWeek,
   startOfDay,
   endOfDay,
+  startOfMonth,
   eachDayOfInterval,
   format,
   isWithinInterval,
 } from "date-fns";
 import { TrendingUp, Clock, Target, Wallet } from "lucide-react";
-import { useStore } from "@/lib/store";
+import { useStore, type ReportsPreset } from "@/lib/store";
+import { periodLabel, resolveDateRange } from "@/lib/date-range-presets";
 import { PageHeader } from "@/components/page-header";
 import { PageScroll } from "@/components/page-scroll";
 import { ScrollReveal } from "@/components/scroll-reveal";
+import { DateRangeFilterCard } from "@/components/date-range-filter-card";
+import { EarningsSummaryCard } from "@/components/earnings-summary-card";
 import { Card } from "@/components/ui/card";
 import {
   computeEarnings,
   formatCurrency,
   formatDuration,
+  fromDateInputValue,
+  toDateInputValue,
   toDecimalHours,
 } from "@/lib/utils";
 
@@ -41,22 +45,37 @@ export default function DashboardPage() {
   const freelanceGoals = useStore((s) => s.freelanceGoals);
   const hydrated = useStore((s) => s.hydrated);
 
+  const [preset, setPreset] = React.useState<ReportsPreset>("week");
+  const [customFrom, setCustomFrom] = React.useState("");
+  const [customTo, setCustomTo] = React.useState("");
+
+  const resolvedCustomFrom =
+    customFrom || toDateInputValue(startOfMonth(new Date()));
+  const resolvedCustomTo = customTo || toDateInputValue(new Date());
+
+  const range = React.useMemo(
+    () =>
+      resolveDateRange(
+        preset,
+        resolvedCustomFrom,
+        resolvedCustomTo,
+        fromDateInputValue
+      ),
+    [preset, resolvedCustomFrom, resolvedCustomTo]
+  );
+
   const now = React.useMemo(() => new Date(), []);
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
   const todayStart = startOfDay(now);
   const todayEnd = endOfDay(now);
 
-  const inWeek = React.useMemo(
-    () =>
-      entries.filter((e) =>
-        isWithinInterval(new Date(e.startedAt), {
-          start: weekStart,
-          end: weekEnd,
-        })
-      ),
-    [entries, weekStart, weekEnd]
-  );
+  const inRange = React.useMemo(() => {
+    const rangeStart = range.start.getTime();
+    const rangeEnd = range.end.getTime();
+    return entries.filter(
+      (e) => e.startedAt >= rangeStart && e.startedAt <= rangeEnd
+    );
+  }, [entries, range]);
+
   const today = React.useMemo(
     () =>
       entries.filter((e) =>
@@ -68,7 +87,7 @@ export default function DashboardPage() {
     [entries, todayStart, todayEnd]
   );
 
-  const weekTotalMs = inWeek.reduce(
+  const periodTotalMs = inRange.reduce(
     (acc, e) => acc + (e.endedAt - e.startedAt),
     0
   );
@@ -76,12 +95,12 @@ export default function DashboardPage() {
     (acc, e) => acc + (e.endedAt - e.startedAt),
     0
   );
-  const billableMs = inWeek
+  const billableMs = inRange
     .filter((e) => e.billable)
     .reduce((acc, e) => acc + (e.endedAt - e.startedAt), 0);
-  const weekEarnings = React.useMemo(
-    () => computeEarnings(inWeek, projects),
-    [inWeek, projects]
+  const periodEarnings = React.useMemo(
+    () => computeEarnings(inRange, projects),
+    [inRange, projects]
   );
 
   const weeklyTarget = freelanceGoals.weeklyHoursTarget * 3600 * 1000;
@@ -92,19 +111,20 @@ export default function DashboardPage() {
   const earningsTarget = freelanceGoals.weeklyEarningsTarget;
   const earningsPercent =
     earningsTarget > 0
-      ? Math.min(100, Math.round((weekEarnings / earningsTarget) * 100))
+      ? Math.min(100, Math.round((periodEarnings / earningsTarget) * 100))
       : 0;
 
-  const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
+  const rangeLabel = periodLabel(preset);
+
+  const days = eachDayOfInterval({ start: range.start, end: range.end });
   const dayData = days.map((d) => {
     const ds = startOfDay(d).getTime();
     const de = endOfDay(d).getTime();
-    const ms = entries
+    const ms = inRange
       .filter((e) => e.startedAt >= ds && e.startedAt <= de)
       .reduce((acc, e) => acc + (e.endedAt - e.startedAt), 0);
     return {
-      day: format(d, "EEE"),
-      date: format(d, "MMM d"),
+      label: format(d, "EEE, MMM d"),
       hours: toDecimalHours(ms),
       ms,
     };
@@ -113,7 +133,7 @@ export default function DashboardPage() {
   const byProject = React.useMemo(() => {
     const m = new Map<string, number>();
     let unassigned = 0;
-    for (const e of inWeek) {
+    for (const e of inRange) {
       const ms = e.endedAt - e.startedAt;
       if (!e.projectId) {
         unassigned += ms;
@@ -139,7 +159,7 @@ export default function DashboardPage() {
       });
     }
     return arr.sort((a, b) => b.ms - a.ms);
-  }, [inWeek, projects]);
+  }, [inRange, projects]);
 
   if (!hydrated) {
     return (
@@ -152,15 +172,23 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader
-        title="Dashboard"
-        description={`Week of ${format(weekStart, "MMM d")} – ${format(
-          weekEnd,
-          "MMM d, yyyy"
-        )}`}
-      />
-      <PageScroll className="p-4 md:p-6 space-y-6">
+      <PageHeader title="Dashboard" />
+      <PageScroll className="p-4 md:p-6 space-y-5">
         <ScrollReveal>
+          <DateRangeFilterCard
+            preset={preset}
+            customFrom={resolvedCustomFrom}
+            customTo={resolvedCustomTo}
+            range={range}
+            onPresetChange={setPreset}
+            onCustomRangeChange={(from, to) => {
+              setCustomFrom(from);
+              setCustomTo(to);
+            }}
+          />
+        </ScrollReveal>
+
+        <ScrollReveal delay={40}>
         {/* KPIs */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
           <Kpi
@@ -172,28 +200,25 @@ export default function DashboardPage() {
           />
           <Kpi
             icon={<TrendingUp className="size-5" />}
-            label="This week"
-            value={formatDuration(weekTotalMs)}
-            sub={`${inWeek.length} ${inWeek.length === 1 ? "entry" : "entries"}`}
+            label={rangeLabel}
+            value={formatDuration(periodTotalMs)}
+            sub={`${inRange.length} ${inRange.length === 1 ? "entry" : "entries"}`}
             tint="emerald"
           />
           <Kpi
             icon={<Wallet className="size-5" />}
-            label="Billable (week)"
+            label={`Billable (${rangeLabel.toLowerCase()})`}
             value={formatDuration(billableMs)}
             sub={
-              weekTotalMs > 0
-                ? `${Math.round((billableMs / weekTotalMs) * 100)}% of tracked`
+              periodTotalMs > 0
+                ? `${Math.round((billableMs / periodTotalMs) * 100)}% of tracked`
                 : "0%"
             }
             tint="amber"
           />
-          <Kpi
-            icon={<Wallet className="size-5" />}
-            label="Earnings (week)"
-            value={formatCurrency(weekEarnings)}
-            sub="billable × project rate"
-            tint="emerald"
+          <EarningsSummaryCard
+            earnings={periodEarnings}
+            label={`Earnings (${rangeLabel.toLowerCase()})`}
           />
           <Kpi
             icon={<Target className="size-5" />}
@@ -208,7 +233,7 @@ export default function DashboardPage() {
               icon={<Target className="size-5" />}
               label="Earnings goal"
               value={`${earningsPercent}%`}
-              sub={`${formatCurrency(weekEarnings)} / ${formatCurrency(earningsTarget)}`}
+              sub={`${formatCurrency(periodEarnings)} / ${formatCurrency(earningsTarget)}`}
               tint="violet"
               progress={earningsPercent}
             />
@@ -223,14 +248,14 @@ export default function DashboardPage() {
             <div className="p-5 pb-0">
               <h2 className="text-base font-semibold">Hours per day</h2>
               <p className="text-sm text-muted-foreground">
-                Daily breakdown for this week
+                Daily breakdown for {rangeLabel.toLowerCase()}
               </p>
             </div>
             <div className="p-2 pt-4 h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={dayData}
-                  margin={{ top: 10, right: 20, bottom: 0, left: -10 }}
+                  margin={{ top: 10, right: 20, bottom: 8, left: -10 }}
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -238,11 +263,12 @@ export default function DashboardPage() {
                     vertical={false}
                   />
                   <XAxis
-                    dataKey="day"
+                    dataKey="label"
                     tickLine={false}
                     axisLine={false}
                     stroke="var(--muted-foreground)"
                     fontSize={12}
+                    interval={dayData.length > 20 ? Math.ceil(dayData.length / 10) : 0}
                   />
                   <YAxis
                     tickLine={false}
@@ -259,7 +285,10 @@ export default function DashboardPage() {
                       borderRadius: 8,
                       fontSize: 12,
                     }}
-                    formatter={(value) => [`${value}h`, "Tracked"]}
+                    formatter={(value, _name, item) => [
+                      `${value}h`,
+                      String(item.payload.label ?? "Tracked"),
+                    ]}
                   />
                   <Bar
                     dataKey="hours"
@@ -275,12 +304,12 @@ export default function DashboardPage() {
           <Card>
             <div className="p-5 pb-0">
               <h2 className="text-base font-semibold">Time by project</h2>
-              <p className="text-sm text-muted-foreground">This week</p>
+              <p className="text-sm text-muted-foreground">{rangeLabel}</p>
             </div>
             <div className="p-2 pt-2 h-72">
               {byProject.length === 0 ? (
                 <div className="h-full grid place-items-center text-sm text-muted-foreground">
-                  No data this week.
+                  No data for this period.
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">

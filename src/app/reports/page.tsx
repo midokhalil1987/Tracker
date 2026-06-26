@@ -4,11 +4,7 @@ import * as React from "react";
 import {
   startOfDay,
   endOfDay,
-  startOfWeek,
-  endOfWeek,
   startOfMonth,
-  endOfMonth,
-  subDays,
   format,
   eachDayOfInterval,
 } from "date-fns";
@@ -22,19 +18,18 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { Download, Calendar, ChevronDown } from "lucide-react";
-import { useStore, type ReportsPreset } from "@/lib/store";
+import { Download } from "lucide-react";
+import { useStore } from "@/lib/store";
+import { resolveDateRange } from "@/lib/date-range-presets";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ProjectPicker } from "@/components/project-picker";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/popover";
-import { DateRangePicker } from "@/components/date-range-picker";
+import { DateRangeFilterCard } from "@/components/date-range-filter-card";
 import { EarningsSummaryCard } from "@/components/earnings-summary-card";
 import { PageScroll } from "@/components/page-scroll";
 import { ScrollReveal } from "@/components/scroll-reveal";
 import {
-  cn,
   computeEarnings,
   formatCurrency,
   formatDuration,
@@ -42,45 +37,6 @@ import {
   toDateInputValue,
   toDecimalHours,
 } from "@/lib/utils";
-
-function getPresetRange(
-  preset: Exclude<ReportsPreset, "custom">
-): { start: Date; end: Date } {
-  const now = new Date();
-  switch (preset) {
-    case "today":
-      return { start: startOfDay(now), end: endOfDay(now) };
-    case "yesterday": {
-      const y = subDays(now, 1);
-      return { start: startOfDay(y), end: endOfDay(y) };
-    }
-    case "week":
-      return {
-        start: startOfWeek(now, { weekStartsOn: 1 }),
-        end: endOfWeek(now, { weekStartsOn: 1 }),
-      };
-    case "lastWeek": {
-      const lw = subDays(now, 7);
-      return {
-        start: startOfWeek(lw, { weekStartsOn: 1 }),
-        end: endOfWeek(lw, { weekStartsOn: 1 }),
-      };
-    }
-    case "month":
-      return { start: startOfMonth(now), end: endOfMonth(now) };
-    case "30d":
-      return { start: startOfDay(subDays(now, 29)), end: endOfDay(now) };
-  }
-}
-
-const PRESETS: { id: ReportsPreset; label: string }[] = [
-  { id: "today", label: "Today" },
-  { id: "yesterday", label: "Yesterday" },
-  { id: "week", label: "This week" },
-  { id: "lastWeek", label: "Last week" },
-  { id: "month", label: "This month" },
-  { id: "30d", label: "Last 30 days" },
-];
 
 export default function ReportsPage() {
   const entries = useStore((s) => s.entries);
@@ -96,16 +52,10 @@ export default function ReportsPage() {
     filter.customFrom || toDateInputValue(startOfMonth(new Date()));
   const customTo = filter.customTo || toDateInputValue(new Date());
 
-  const range = React.useMemo(() => {
-    if (preset === "custom") {
-      const fromD = fromDateInputValue(customFrom) ?? startOfMonth(new Date());
-      const toD = fromDateInputValue(customTo) ?? new Date();
-      const [a, b] =
-        fromD.getTime() <= toD.getTime() ? [fromD, toD] : [toD, fromD];
-      return { start: startOfDay(a), end: endOfDay(b) };
-    }
-    return getPresetRange(preset);
-  }, [preset, customFrom, customTo]);
+  const range = React.useMemo(
+    () => resolveDateRange(preset, customFrom, customTo, fromDateInputValue),
+    [preset, customFrom, customTo]
+  );
 
   const filtered = React.useMemo(() => {
     const rangeStart = range.start.getTime();
@@ -131,9 +81,9 @@ export default function ReportsPage() {
     [filtered, projects]
   );
 
-  // Controlled state for the custom-range popover so we can auto-close it
-  // after the user commits a range.
-  const [rangeOpen, setRangeOpen] = React.useState(false);
+  const setCustomRange = (from: string, to: string) => {
+    setReportsFilter({ customFrom: from, customTo: to });
+  };
 
   // Daily chart data (limit to <= 60 days for clarity)
   const days = eachDayOfInterval({ start: range.start, end: range.end });
@@ -145,7 +95,7 @@ export default function ReportsPage() {
       .reduce((acc, e) => acc + entryMs(e), 0);
     return {
       key: format(d, "yyyy-MM-dd"),
-      label: format(d, days.length > 14 ? "MMM d" : "EEE"),
+      label: format(d, "EEE, MMM d"),
       hours: toDecimalHours(ms),
       ms,
       duration: ms > 0 ? formatDuration(ms) : "",
@@ -266,75 +216,15 @@ export default function ReportsPage() {
       <PageScroll className="p-4 md:p-6 space-y-5">
         <ScrollReveal>
         {/* Filters */}
-        <Card>
-          <div className="p-4 md:p-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Calendar className="size-4 text-muted-foreground" />
-              <div className="flex flex-wrap gap-1">
-                {PRESETS.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setReportsFilter({ preset: p.id })}
-                    className={cn(
-                      "px-3 h-8 rounded-md text-sm cursor-pointer",
-                      preset === p.id
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted hover:bg-muted/70 text-foreground"
-                    )}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-
-                {/* Custom — a single trigger that opens a calendar range
-                    popover. Clicking it switches the preset to "custom" so
-                    the chosen range applies. */}
-                <Popover open={rangeOpen} onOpenChange={setRangeOpen}>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (preset !== "custom")
-                          setReportsFilter({ preset: "custom" });
-                      }}
-                      className={cn(
-                        "px-3 h-8 rounded-md text-sm inline-flex items-center gap-1.5 cursor-pointer",
-                        preset === "custom"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted hover:bg-muted/70 text-foreground"
-                      )}
-                    >
-                      <span>
-                        {preset === "custom"
-                          ? `${format(range.start, "MMM d")} – ${format(
-                              range.end,
-                              "MMM d, yyyy"
-                            )}`
-                          : "Custom"}
-                      </span>
-                      <ChevronDown className="size-3.5" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="p-3 w-auto" align="end">
-                    <DateRangePicker
-                      value={{
-                        from: fromDateInputValue(customFrom) ?? null,
-                        to: fromDateInputValue(customTo) ?? null,
-                      }}
-                      onChange={({ from, to }) => {
-                        setReportsFilter({
-                          customFrom: toDateInputValue(from),
-                          customTo: toDateInputValue(to),
-                        });
-                        setRangeOpen(false);
-                      }}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
+        <DateRangeFilterCard
+          preset={preset}
+          customFrom={customFrom}
+          customTo={customTo}
+          range={range}
+          onPresetChange={(id) => setReportsFilter({ preset: id })}
+          onCustomRangeChange={setCustomRange}
+          extra={
+            <>
               <ProjectPicker
                 value={projectFilter}
                 onChange={(id) => setReportsFilter({ projectId: id })}
@@ -350,13 +240,9 @@ export default function ReportsPage() {
                 />
                 Billable only
               </label>
-            </div>
-          </div>
-          <div className="px-5 pb-4 text-xs text-muted-foreground">
-            {format(range.start, "MMM d, yyyy")} —{" "}
-            {format(range.end, "MMM d, yyyy")}
-          </div>
-        </Card>
+            </>
+          }
+        />
         </ScrollReveal>
 
         <ScrollReveal delay={60}>
@@ -412,7 +298,7 @@ export default function ReportsPage() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={chartData}
-                margin={{ top: 28, right: 20, bottom: 0, left: -10 }}
+                margin={{ top: 28, right: 20, bottom: 8, left: -10 }}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
@@ -444,7 +330,7 @@ export default function ReportsPage() {
                   }}
                   formatter={(_value, _name, item) => [
                     item.payload.ms > 0 ? item.payload.duration : "0:00:00",
-                    "Tracked",
+                    String(item.payload.label ?? "Tracked"),
                   ]}
                 />
                 <Bar
