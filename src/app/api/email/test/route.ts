@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { verifyBearer } from "@/lib/server/auth";
-import { isEmailConfigured, sendXlsxEmail } from "@/lib/server/email";
+import { authorizeSync } from "@/lib/server/auth";
+import { normalizeEmailRecipients } from "@/lib/email-recipients";
+import { isEmailConfigured, sendXlsxEmailToRecipients } from "@/lib/server/email";
 import { buildEmailReportSummary } from "@/lib/server/email-template";
 import { readWorkspace } from "@/lib/server/workspace-store";
 import { buildXlsxBuffer, xlsxFilenameForDate } from "@/lib/xlsx-export";
@@ -12,11 +13,14 @@ type TestBody = {
   projects?: Project[];
   tags?: Tag[];
   entries?: TimeEntry[];
+  emails?: string[];
+  /** @deprecated */
   email?: string;
 };
 
 export async function POST(req: Request) {
-  if (!verifyBearer(req, "SYNC_SECRET")) {
+  const auth = await authorizeSync(req);
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
@@ -40,34 +44,37 @@ export async function POST(req: Request) {
     Array.isArray(body.tags) &&
     Array.isArray(body.entries);
 
+  const userId = auth.type === "session" ? auth.user.id : undefined;
+  const fallback =
+    auth.type === "session" && auth.user.email
+      ? auth.user.email
+      : process.env.EMAIL_TO?.trim() || "midokhalil1987@gmail.com";
+
   const workspace = fromBody
     ? {
         projects: body.projects!,
         tags: body.tags!,
         entries: body.entries!,
-        email:
-          typeof body.email === "string" && body.email.trim()
-            ? body.email.trim()
-            : process.env.EMAIL_TO?.trim() || "midokhalil1987@gmail.com",
+        emails: normalizeEmailRecipients(body.emails ?? body.email, fallback),
       }
-    : await readWorkspace().then((w) =>
+    : await readWorkspace(userId).then((w) =>
         w
           ? {
               projects: w.projects,
               tags: w.tags,
               entries: w.entries,
-              email: w.emailReportsEnabled
-                ? w.email
-                : process.env.EMAIL_TO?.trim() || w.email,
+              emails: w.emailReportsEnabled
+                ? w.emails
+                : normalizeEmailRecipients(w.emails, fallback),
             }
           : null
       );
 
-  if (!workspace) {
+  if (!workspace || workspace.emails.length === 0) {
     return NextResponse.json(
       {
         error:
-          "No workspace data. Send a test from Settings (includes your data) or sync to the server first.",
+          "No workspace data or valid recipient emails. Add at least one email in Settings.",
       },
       { status: 404 }
     );
@@ -86,12 +93,16 @@ export async function POST(req: Request) {
     workspace.entries
   );
 
-  await sendXlsxEmail({
-    to: workspace.email,
+  await sendXlsxEmailToRecipients({
+    to: workspace.emails,
     filename,
     buffer,
     summary,
   });
 
-  return NextResponse.json({ ok: true, to: workspace.email, filename });
+  return NextResponse.json({
+    ok: true,
+    to: workspace.emails,
+    filename,
+  });
 }

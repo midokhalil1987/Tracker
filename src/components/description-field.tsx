@@ -40,6 +40,8 @@ export function DescriptionField({
     setOpen(true);
   };
 
+  const handleClose = React.useCallback(() => setOpen(false), []);
+
   const isBar = variant === "bar";
   const hasDescription = Boolean(value.trim());
 
@@ -86,7 +88,7 @@ export function DescriptionField({
             aria-label="Edit description"
             className={cn(
               "grid place-items-center rounded-md border border-input bg-muted/30 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/60 cursor-pointer transition-colors",
-              isBar ? "size-9" : "size-8",
+              isBar ? "h-11 w-11" : "size-8",
               open && mode === "edit" && "bg-primary text-primary-foreground border-primary"
             )}
           >
@@ -100,7 +102,7 @@ export function DescriptionField({
             aria-label="Add description"
             className={cn(
               "grid place-items-center rounded-md border border-input bg-muted/30 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/60 cursor-pointer transition-colors",
-              isBar ? "size-9" : "size-8",
+              isBar ? "h-11 w-11" : "size-8",
               open && mode === "add" && "bg-primary text-primary-foreground border-primary"
             )}
           >
@@ -113,7 +115,7 @@ export function DescriptionField({
         open={open}
         mode={mode}
         value={value}
-        onClose={() => setOpen(false)}
+        onClose={handleClose}
         onSave={onSave}
         projectId={projectId}
         projectName={projectName}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { verifyBearer } from "@/lib/server/auth";
+import { authorizeSync } from "@/lib/server/auth";
+import { normalizeEmailRecipients } from "@/lib/email-recipients";
 import { writeWorkspace, StorageNotConfiguredError } from "@/lib/server/workspace-store";
 import type { Project, Tag, TimeEntry } from "@/lib/types";
 
@@ -10,11 +11,14 @@ type SyncBody = {
   tags?: Tag[];
   entries?: TimeEntry[];
   emailReportsEnabled?: boolean;
+  emails?: string[];
+  /** @deprecated */
   email?: string;
 };
 
 export async function POST(req: Request) {
-  if (!verifyBearer(req, "SYNC_SECRET")) {
+  const auth = await authorizeSync(req);
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
@@ -29,19 +33,28 @@ export async function POST(req: Request) {
   const tags = Array.isArray(body.tags) ? body.tags : [];
   const entries = Array.isArray(body.entries) ? body.entries : [];
   const emailReportsEnabled = Boolean(body.emailReportsEnabled);
-  const email =
-    typeof body.email === "string" && body.email.trim()
-      ? body.email.trim()
+  const fallback =
+    auth.type === "session" && auth.user.email
+      ? auth.user.email
       : process.env.EMAIL_TO?.trim() || "midokhalil1987@gmail.com";
+  const emails = normalizeEmailRecipients(
+    body.emails ?? body.email,
+    fallback
+  );
+
+  const userId = auth.type === "session" ? auth.user.id : undefined;
 
   try {
-    const snapshot = await writeWorkspace({
-      projects,
-      tags,
-      entries,
-      emailReportsEnabled,
-      email,
-    });
+    const snapshot = await writeWorkspace(
+      {
+        projects,
+        tags,
+        entries,
+        emailReportsEnabled,
+        emails,
+      },
+      userId
+    );
 
     return NextResponse.json({
       ok: true,

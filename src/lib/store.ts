@@ -11,6 +11,7 @@ import type {
   FreelanceGoals,
 } from "./types";
 import { uid } from "./utils";
+import { normalizeEmailRecipients } from "./email-recipients";
 
 const DEFAULT_COLORS = [
   "#6366f1", // indigo
@@ -50,14 +51,14 @@ type ReportsFilter = {
 
 type EmailReportsSettings = {
   enabled: boolean;
-  email: string;
+  emails: string[];
   syncSecret: string;
   lastSyncedAt: number | null;
 };
 
 const DEFAULT_EMAIL_REPORTS: EmailReportsSettings = {
   enabled: false,
-  email: "midokhalil1987@gmail.com",
+  emails: ["midokhalil1987@gmail.com"],
   syncSecret: "",
   lastSyncedAt: null,
 };
@@ -615,7 +616,7 @@ export const useStore = create<TimeTrackerStore>()(
     }),
     {
       name: "time-tracker-storage-v1",
-      version: 7,
+      version: 8,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         projects: state.projects,
@@ -646,12 +647,13 @@ export const useStore = create<TimeTrackerStore>()(
         }
         if (
           fromVersion < 5 &&
-          s.emailReports?.email === "mahmoudkhalil6987@gmail.com"
+          (s.emailReports as { email?: string } | undefined)?.email ===
+            "mahmoudkhalil6987@gmail.com"
         ) {
           s.emailReports = {
-            ...s.emailReports,
-            email: "midokhalil1987@gmail.com",
-          };
+            ...s.emailReports!,
+            emails: ["midokhalil1987@gmail.com"],
+          } as EmailReportsSettings;
         }
         if (fromVersion < 6) {
           s.freelanceGoals = s.freelanceGoals ?? DEFAULT_FREELANCE_GOALS;
@@ -662,6 +664,18 @@ export const useStore = create<TimeTrackerStore>()(
           (s.reportsFilter?.preset as string | undefined) === "last2Weeks"
         ) {
           s.reportsFilter = { ...s.reportsFilter!, preset: "lastWeek" };
+        }
+        if (fromVersion < 8 && s.emailReports) {
+          const legacy = s.emailReports as EmailReportsSettings & {
+            email?: string;
+          };
+          s.emailReports = {
+            ...legacy,
+            emails: normalizeEmailRecipients(
+              legacy.emails ?? legacy.email,
+              DEFAULT_EMAIL_REPORTS.emails[0]
+            ),
+          };
         }
         return s;
       },

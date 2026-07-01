@@ -4,15 +4,14 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Sidebar } from "@/components/sidebar";
-import { MobileNav } from "@/components/mobile-nav";
 import { DocumentTitle } from "@/components/document-title";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ConfirmDialogProvider } from "@/components/confirm-dialog";
 import { ToastProvider } from "@/components/toast";
 import { CommandPaletteProvider } from "@/components/command-palette";
 import { RouteScrollRestorer } from "@/components/route-scroll-restorer";
-import { DataSync } from "@/components/data-sync";
+import { AuthProvider } from "@/components/auth-provider";
+import { AppShell } from "@/components/app-shell";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { APP_FULL_TITLE, APP_DESCRIPTION } from "@/lib/brand";
 
@@ -52,16 +51,11 @@ export default function RootLayout({
           <ConfirmDialogProvider>
             <ToastProvider>
               <CommandPaletteProvider>
-                <DocumentTitle />
-                <RouteScrollRestorer />
-                <DataSync />
-                <div className="flex h-svh overflow-hidden">
-                  <Sidebar />
-                  <main className="flex flex-1 flex-col min-w-0 min-h-0 overflow-hidden pb-16 md:pb-0">
-                    {children}
-                  </main>
-                </div>
-                <MobileNav />
+                <AuthProvider>
+                  <DocumentTitle />
+                  <RouteScrollRestorer />
+                  <AppShell>{children}</AppShell>
+                </AuthProvider>
               </CommandPaletteProvider>
             </ToastProvider>
           </ConfirmDialogProvider>

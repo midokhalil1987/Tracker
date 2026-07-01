@@ -55,6 +55,11 @@ export function DescriptionEditorModal({
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const listId = React.useId();
   const [mounted, setMounted] = React.useState(false);
+  const onCloseRef = React.useRef(onClose);
+
+  React.useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   React.useEffect(() => {
     setMounted(true);
@@ -82,13 +87,22 @@ export function DescriptionEditorModal({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
       }
     };
 
     document.addEventListener("keydown", onKeyDown);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
+
+  React.useEffect(() => {
+    if (!open) return;
 
     const id = window.requestAnimationFrame(() => {
       textareaRef.current?.focus();
@@ -97,11 +111,9 @@ export function DescriptionEditorModal({
     });
 
     return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = prevOverflow;
       window.cancelAnimationFrame(id);
     };
-  }, [open, onClose]);
+  }, [open, mode]);
 
   const autocomplete = React.useMemo(
     () =>
@@ -285,7 +297,7 @@ export function DescriptionEditorModal({
               onKeyDown={onTextareaKeyDown}
               rows={4}
               placeholder="e.g. Implemented checkout flow and fixed payment webhook retries"
-              className="w-full min-h-[7rem] px-3 py-2.5 rounded-lg border border-input bg-background text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring/60"
+              className="w-full min-h-[7rem] px-3 py-2.5 rounded-lg border border-input bg-background text-sm resize-y select-text focus:outline-none focus:ring-2 focus:ring-ring/60"
               aria-autocomplete="list"
               aria-controls={showAutocomplete ? listId : undefined}
               aria-expanded={showAutocomplete}

@@ -1,7 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { Play, Square, DollarSign, Clock4, Check, X, RotateCcw } from "lucide-react";
+import {
+  Play,
+  Square,
+  DollarSign,
+  Clock4,
+  Check,
+  X,
+  RotateCcw,
+} from "lucide-react";
 import { endOfWeek, isWithinInterval, startOfWeek } from "date-fns";
 import { useStore } from "@/lib/store";
 import {
@@ -23,6 +31,9 @@ import { DescriptionField } from "./description-field";
 import { FormField } from "@/components/ui/form-field";
 import { FieldLabel } from "@/components/ui/field-label";
 
+const barControl =
+  "h-11 min-h-11 max-h-11 shrink-0 inline-flex items-center justify-center";
+
 export function TimerBar() {
   const running = useStore((s) => s.running);
   const entries = useStore((s) => s.entries);
@@ -36,7 +47,9 @@ export function TimerBar() {
 
   // Draft state when no timer is running
   const [draftDesc, setDraftDesc] = React.useState("");
-  const [draftProject, setDraftProject] = React.useState<string | null>(null);
+  const [draftProject, setDraftProject] = React.useState<string | null>(
+    null,
+  );
   const [draftTags, setDraftTags] = React.useState<string[]>([]);
   const [draftBillable, setDraftBillable] = React.useState(false);
 
@@ -44,24 +57,25 @@ export function TimerBar() {
   const [mode, setMode] = React.useState<"timer" | "manual">("timer");
   const [manualDuration, setManualDuration] = React.useState("01:00:00");
   const [manualDate, setManualDate] = React.useState<string>(() =>
-    toDateInputValue(new Date())
+    toDateInputValue(new Date()),
   );
   const [manualStartTime, setManualStartTime] = React.useState(() =>
-    toTimeInputValue(Date.now())
+    toTimeInputValue(Date.now()),
   );
 
-  const [editingSince, setEditingSince] = React.useState(false);
+  const [editingSinceSession, setEditingSinceSession] = React.useState<
+    number | null
+  >(null);
   const [sinceTime, setSinceTime] = React.useState("");
+
+  const isEditingSince =
+    running !== null && editingSinceSession === running.startedAt;
 
   const beginEditSince = () => {
     if (!running) return;
     setSinceTime(toTimeInputValue(running.startedAt));
-    setEditingSince(true);
+    setEditingSinceSession(running.startedAt);
   };
-
-  React.useEffect(() => {
-    if (!running) setEditingSince(false);
-  }, [running]);
 
   // Live ticker
   const [now, setNow] = React.useState<number>(() => Date.now());
@@ -95,7 +109,10 @@ export function TimerBar() {
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
     const inWeek = entries.filter((e) =>
-      isWithinInterval(new Date(e.startedAt), { start: weekStart, end: weekEnd })
+      isWithinInterval(new Date(e.startedAt), {
+        start: weekStart,
+        end: weekEnd,
+      }),
     );
     const billableMs = inWeek
       .filter((e) => e.billable)
@@ -139,7 +156,7 @@ export function TimerBar() {
   const resetSince = () => {
     if (!running) return;
     setSinceTime(toTimeInputValue(running.startedAt));
-    setEditingSince(false);
+    setEditingSinceSession(null);
   };
 
   const commitSince = () => {
@@ -149,7 +166,7 @@ export function TimerBar() {
       resetSince();
       return;
     }
-    setEditingSince(false);
+    setEditingSinceSession(null);
     if (startedAt !== running.startedAt) {
       updateRunning({ startedAt });
     }
@@ -159,7 +176,10 @@ export function TimerBar() {
     const ms = parseDuration(manualDuration);
     if (!ms || ms <= 0) return;
     const chosenDate = fromDateInputValue(manualDate) ?? new Date();
-    const startedAt = applyTimeToTimestamp(chosenDate.getTime(), manualStartTime);
+    const startedAt = applyTimeToTimestamp(
+      chosenDate.getTime(),
+      manualStartTime,
+    );
     if (startedAt === null) return;
     // endedAt = startedAt + duration. This naturally supports spanning past
     // midnight (e.g. 4:00 PM Jun 16 + 10:00:00 = 2:00 AM Jun 17).
@@ -223,35 +243,45 @@ export function TimerBar() {
             if (mode === "timer" && !running) handleStart();
           }}
         />
-        <div className="flex flex-wrap items-end gap-2">
+        <div
+          className={cn(
+            "flex flex-wrap gap-2",
+            !running && mode === "manual" ? "items-end" : "items-center",
+          )}
+        >
           <CommandPaletteHint />
-          <ProjectPicker value={projectId} onChange={setProject} />
-          <TagPicker value={tagIds} onChange={setTags} />
+          <ProjectPicker
+            value={projectId}
+            onChange={setProject}
+            className="h-11"
+          />
+          <TagPicker value={tagIds} onChange={setTags} className="h-11" />
           <button
             type="button"
             onClick={() => setBillable(!billable)}
             className={cn(
-              "h-9 w-9 grid place-items-center rounded-md border border-input bg-card hover:bg-muted/60 cursor-pointer",
-              billable && "text-success border-success/40 bg-success/5"
+              barControl,
+              "w-11 rounded-md border border-input bg-card hover:bg-muted/60 cursor-pointer",
+              billable && "text-success border-success/40 bg-success/5",
             )}
             title={billable ? "Billable" : "Not billable"}
           >
             <DollarSign className="size-4" />
           </button>
 
-          <div className="hidden md:block w-px h-8 bg-border" />
+          <div className="hidden md:block w-px h-11 bg-border" />
 
           {/* Mode toggle */}
           {!running ? (
-            <div className="inline-flex rounded-md border border-input p-0.5 bg-muted/40">
+            <div className="inline-flex h-11 items-center rounded-md border border-input p-0.5 bg-muted/40">
               <button
                 type="button"
                 onClick={() => setMode("timer")}
                 className={cn(
-                  "px-2 h-8 rounded text-xs font-medium cursor-pointer",
+                  "px-2.5 h-full rounded text-xs font-medium cursor-pointer",
                   mode === "timer"
                     ? "bg-card shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 Timer
@@ -260,10 +290,10 @@ export function TimerBar() {
                 type="button"
                 onClick={() => setMode("manual")}
                 className={cn(
-                  "px-2 h-8 rounded text-xs font-medium cursor-pointer",
+                  "px-2.5 h-full rounded text-xs font-medium cursor-pointer",
                   mode === "manual"
                     ? "bg-card shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 Manual
@@ -274,11 +304,18 @@ export function TimerBar() {
           {/* Time display + action */}
           {running ? (
             <>
-              <div className="flex items-center gap-2 px-3 h-11 rounded-md border border-input bg-card">
+              <div
+                className={cn(
+                  barControl,
+                  "gap-2 px-3 rounded-md border border-input bg-card",
+                )}
+              >
                 <span className="size-2 rounded-full bg-danger animate-pulse shrink-0" />
-                {editingSince ? (
+                {isEditingSince ? (
                   <div className="flex items-center gap-1">
-                    <span className="text-xs text-muted-foreground">since</span>
+                    <span className="text-xs text-muted-foreground">
+                      since
+                    </span>
                     <input
                       type="time"
                       value={sinceTime}
@@ -317,14 +354,17 @@ export function TimerBar() {
                     since {formatTime(running.startedAt)}
                   </button>
                 )}
-                <span className="font-mono tabular-nums text-base md:text-lg font-semibold">
+                <span className="font-mono tabular-nums text-sm md:text-base font-semibold leading-none">
                   {formatDuration(elapsed)}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={handleStop}
-                className="h-11 px-5 rounded-md bg-danger text-white font-semibold inline-flex items-center gap-2 hover:bg-danger/90 shadow-sm cursor-pointer"
+                className={cn(
+                  barControl,
+                  "gap-2 px-5 rounded-md bg-danger text-white font-semibold hover:bg-danger/90 shadow-sm cursor-pointer",
+                )}
               >
                 <Square className="size-4 fill-current" />
                 Stop
@@ -332,16 +372,24 @@ export function TimerBar() {
             </>
           ) : mode === "timer" ? (
             <>
-              <div className="flex items-center gap-2 px-3 h-11 rounded-md border border-input bg-muted/30">
+              <div
+                className={cn(
+                  barControl,
+                  "gap-2 px-3 rounded-md border border-input bg-muted/30",
+                )}
+              >
                 <Clock4 className="size-4 text-muted-foreground" />
-                <span className="font-mono tabular-nums text-base md:text-lg font-semibold text-muted-foreground">
+                <span className="font-mono tabular-nums text-sm md:text-base font-semibold text-muted-foreground leading-none">
                   00:00:00
                 </span>
               </div>
               <button
                 type="button"
                 onClick={handleStart}
-                className="h-11 px-5 rounded-md bg-primary text-primary-foreground font-semibold inline-flex items-center gap-2 hover:bg-primary/90 shadow-sm cursor-pointer"
+                className={cn(
+                  barControl,
+                  "gap-2 px-5 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90 shadow-sm cursor-pointer",
+                )}
               >
                 <Play className="size-4 fill-current" />
                 Start
@@ -360,7 +408,9 @@ export function TimerBar() {
                 />
               </FormField>
               <FormField className="shrink-0">
-                <FieldLabel htmlFor="manual-entry-time">Start time</FieldLabel>
+                <FieldLabel htmlFor="manual-entry-time">
+                  Start time
+                </FieldLabel>
                 <input
                   id="manual-entry-time"
                   type="time"
@@ -371,7 +421,9 @@ export function TimerBar() {
                 />
               </FormField>
               <FormField className="shrink-0">
-                <FieldLabel htmlFor="manual-entry-duration">Duration</FieldLabel>
+                <FieldLabel htmlFor="manual-entry-duration">
+                  Duration
+                </FieldLabel>
                 <input
                   id="manual-entry-duration"
                   value={manualDuration}
@@ -385,7 +437,10 @@ export function TimerBar() {
                 type="button"
                 onClick={handleAddManual}
                 disabled={!parseDuration(manualDuration)}
-                className="h-11 px-5 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className={cn(
+                  barControl,
+                  "gap-2 px-5 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
+                )}
               >
                 Add
               </button>

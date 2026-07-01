@@ -517,7 +517,7 @@ export function CommandPaletteHint() {
     <button
       type="button"
       onClick={() => setOpen(true)}
-      className="hidden sm:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-input bg-muted/40 text-xs text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+      className="hidden sm:inline-flex items-center gap-1.5 h-11 px-2.5 rounded-md border border-input bg-muted/40 text-xs text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
     >
       <Search className="size-3.5" />
       <span>Search</span>
