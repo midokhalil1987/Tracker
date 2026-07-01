@@ -1,17 +1,22 @@
 import fs from "fs/promises";
 import path from "path";
 import type { Project, Tag, TimeEntry } from "@/lib/types";
+import { envPresent } from "@/lib/server/env";
+import { normalizeEmailRecipients } from "@/lib/email-recipients";
+import { getRedis, isRedisConfigured, redisEnv } from "@/lib/server/redis-client";
 import { STORAGE_SETUP } from "./storage-setup";
 
-const REDIS_KEY = "workspace:snapshot";
-const BLOB_PATH = "workspace-snapshot.json";
+const LEGACY_REDIS_KEY = "workspace:snapshot";
+const LEGACY_BLOB_PATH = "workspace-snapshot.json";
 
 export type WorkspaceSnapshot = {
   projects: Project[];
   tags: Tag[];
   entries: TimeEntry[];
   emailReportsEnabled: boolean;
-  email: string;
+  emails: string[];
+  /** @deprecated Legacy single recipient — normalized to `emails` on read/write */
+  email?: string;
   updatedAt: string;
   lastEmailSentAt: string | null;
 };
@@ -19,7 +24,8 @@ export type WorkspaceSnapshot = {
 export type StorageMode = "redis" | "blob" | "file";
 
 const DATA_DIR = path.join(process.cwd(), ".data");
-const DATA_FILE = path.join(DATA_DIR, "workspace.json");
+const LEGACY_DATA_FILE = path.join(DATA_DIR, "workspace.json");
+const WORKSPACES_DIR = path.join(DATA_DIR, "workspaces");
 
 const DEFAULT_EMAIL =
   process.env.EMAIL_TO?.trim() || "midokhalil1987@gmail.com";
@@ -35,9 +41,22 @@ export class StorageNotConfiguredError extends Error {
   }
 }
 
-function envPresent(name: string): boolean {
-  const value = process.env[name];
-  return Boolean(value && value.trim().length > 0);
+function workspaceRedisKey(userId?: string): string {
+  return userId ? `workspace:${userId}` : LEGACY_REDIS_KEY;
+}
+
+function workspaceBlobPath(userId?: string): string {
+  return userId ? `workspace-${userId}.json` : LEGACY_BLOB_PATH;
+}
+
+function workspaceFilePath(userId?: string): string {
+  return userId
+    ? path.join(WORKSPACES_DIR, `${userId}.json`)
+    : LEGACY_DATA_FILE;
+}
+
+function blobConfigured(): boolean {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim());
 }
 
 /** Safe diagnostics — key names only, never values. */
@@ -54,21 +73,6 @@ export function getEnvDiagnostics() {
   };
 }
 
-function redisEnv(): { url: string; token: string } | null {
-  const url =
-    process.env.UPSTASH_REDIS_REST_URL?.trim() ||
-    process.env.KV_REST_API_URL?.trim();
-  const token =
-    process.env.UPSTASH_REDIS_REST_TOKEN?.trim() ||
-    process.env.KV_REST_API_TOKEN?.trim();
-  if (!url || !token) return null;
-  return { url, token };
-}
-
-function blobConfigured(): boolean {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim());
-}
-
 /** Which backend is active (null = not configured on Vercel). */
 export function getStorageStatus(): {
   mode: StorageMode | null;
@@ -77,7 +81,7 @@ export function getStorageStatus(): {
   blob: boolean;
 } {
   const vercel = Boolean(process.env.VERCEL);
-  const redis = Boolean(redisEnv());
+  const redis = isRedisConfigured();
   const blob = blobConfigured();
 
   let mode: StorageMode | null;
@@ -95,13 +99,6 @@ function resolveStorageMode(): StorageMode {
   return mode;
 }
 
-async function getRedis() {
-  const env = redisEnv();
-  if (!env) throw new Error("Redis is not configured.");
-  const { Redis } = await import("@upstash/redis");
-  return new Redis({ url: env.url, token: env.token });
-}
-
 /** Returns true if Redis env vars are set and a ping succeeds. */
 export async function pingRedis(): Promise<boolean> {
   if (!redisEnv()) return false;
@@ -114,35 +111,46 @@ export async function pingRedis(): Promise<boolean> {
   }
 }
 
-async function readFromFile(): Promise<WorkspaceSnapshot | null> {
+async function readFromFile(userId?: string): Promise<WorkspaceSnapshot | null> {
   try {
-    const raw = await fs.readFile(DATA_FILE, "utf8");
+    const raw = await fs.readFile(workspaceFilePath(userId), "utf8");
     return JSON.parse(raw) as WorkspaceSnapshot;
   } catch {
     return null;
   }
 }
 
-async function writeToFile(snapshot: WorkspaceSnapshot): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(DATA_FILE, JSON.stringify(snapshot, null, 2), "utf8");
+async function writeToFile(
+  snapshot: WorkspaceSnapshot,
+  userId?: string
+): Promise<void> {
+  const filePath = workspaceFilePath(userId);
+  if (userId) {
+    await fs.mkdir(WORKSPACES_DIR, { recursive: true });
+  } else {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+  }
+  await fs.writeFile(filePath, JSON.stringify(snapshot, null, 2), "utf8");
 }
 
-async function readFromRedis(): Promise<WorkspaceSnapshot | null> {
+async function readFromRedis(userId?: string): Promise<WorkspaceSnapshot | null> {
   const redis = await getRedis();
-  const data = await redis.get<WorkspaceSnapshot>(REDIS_KEY);
+  const data = await redis.get<WorkspaceSnapshot>(workspaceRedisKey(userId));
   return data ?? null;
 }
 
-async function writeToRedis(snapshot: WorkspaceSnapshot): Promise<void> {
+async function writeToRedis(
+  snapshot: WorkspaceSnapshot,
+  userId?: string
+): Promise<void> {
   const redis = await getRedis();
-  await redis.set(REDIS_KEY, snapshot);
+  await redis.set(workspaceRedisKey(userId), snapshot);
 }
 
-async function readFromBlob(): Promise<WorkspaceSnapshot | null> {
+async function readFromBlob(userId?: string): Promise<WorkspaceSnapshot | null> {
   const { head } = await import("@vercel/blob");
   try {
-    const meta = await head(BLOB_PATH);
+    const meta = await head(workspaceBlobPath(userId));
     const res = await fetch(meta.url);
     if (!res.ok) return null;
     return (await res.json()) as WorkspaceSnapshot;
@@ -151,9 +159,12 @@ async function readFromBlob(): Promise<WorkspaceSnapshot | null> {
   }
 }
 
-async function writeToBlob(snapshot: WorkspaceSnapshot): Promise<void> {
+async function writeToBlob(
+  snapshot: WorkspaceSnapshot,
+  userId?: string
+): Promise<void> {
   const { put } = await import("@vercel/blob");
-  await put(BLOB_PATH, JSON.stringify(snapshot), {
+  await put(workspaceBlobPath(userId), JSON.stringify(snapshot), {
     access: "private",
     addRandomSuffix: false,
     allowOverwrite: true,
@@ -161,52 +172,78 @@ async function writeToBlob(snapshot: WorkspaceSnapshot): Promise<void> {
   });
 }
 
-async function readByMode(mode: StorageMode): Promise<WorkspaceSnapshot | null> {
+function normalizeSnapshot(
+  snapshot: WorkspaceSnapshot,
+  fallbackEmail = DEFAULT_EMAIL
+): WorkspaceSnapshot {
+  const emails = normalizeEmailRecipients(
+    snapshot.emails ?? snapshot.email,
+    fallbackEmail
+  );
+  return { ...snapshot, emails };
+}
+
+async function readByMode(
+  mode: StorageMode,
+  userId?: string
+): Promise<WorkspaceSnapshot | null> {
   switch (mode) {
     case "redis":
-      return readFromRedis();
+      return readFromRedis(userId);
     case "blob":
-      return readFromBlob();
+      return readFromBlob(userId);
     case "file":
-      return readFromFile();
+      return readFromFile(userId);
   }
 }
 
 async function writeByMode(
   mode: StorageMode,
-  snapshot: WorkspaceSnapshot
+  snapshot: WorkspaceSnapshot,
+  userId?: string
 ): Promise<void> {
   switch (mode) {
     case "redis":
-      await writeToRedis(snapshot);
+      await writeToRedis(snapshot, userId);
       break;
     case "blob":
-      await writeToBlob(snapshot);
+      await writeToBlob(snapshot, userId);
       break;
     case "file":
-      await writeToFile(snapshot);
+      await writeToFile(snapshot, userId);
       break;
   }
 }
 
-export async function readWorkspace(): Promise<WorkspaceSnapshot | null> {
+/** Read workspace for a user, or the legacy global snapshot when userId is omitted. */
+export async function readWorkspace(
+  userId?: string
+): Promise<WorkspaceSnapshot | null> {
   const mode = resolveStorageMode();
-  return readByMode(mode);
+  const snapshot = await readByMode(mode, userId);
+  if (!snapshot) return null;
+  return normalizeSnapshot(snapshot);
 }
 
 export async function writeWorkspace(
-  data: Omit<WorkspaceSnapshot, "updatedAt" | "lastEmailSentAt"> & {
+  data: Omit<WorkspaceSnapshot, "updatedAt" | "lastEmailSentAt" | "email"> & {
     lastEmailSentAt?: string | null;
-  }
+    email?: string;
+  },
+  userId?: string
 ): Promise<WorkspaceSnapshot> {
   const mode = resolveStorageMode();
-  const existing = await readByMode(mode);
+  const existing = await readByMode(mode, userId);
+  const emails = normalizeEmailRecipients(
+    data.emails ?? data.email ?? existing?.emails ?? existing?.email,
+    DEFAULT_EMAIL
+  );
   const snapshot: WorkspaceSnapshot = {
     projects: data.projects,
     tags: data.tags,
     entries: data.entries,
     emailReportsEnabled: data.emailReportsEnabled,
-    email: data.email.trim() || DEFAULT_EMAIL,
+    emails,
     updatedAt: new Date().toISOString(),
     lastEmailSentAt:
       data.lastEmailSentAt !== undefined
@@ -215,7 +252,7 @@ export async function writeWorkspace(
   };
 
   try {
-    await writeByMode(mode, snapshot);
+    await writeByMode(mode, snapshot, userId);
   } catch (error) {
     if (error instanceof StorageNotConfiguredError) throw error;
     throw new Error(`Failed to persist workspace snapshot (${mode}).`, {
@@ -226,10 +263,36 @@ export async function writeWorkspace(
   return snapshot;
 }
 
-export async function markEmailSent(): Promise<void> {
+export async function markEmailSent(userId?: string): Promise<void> {
   const mode = resolveStorageMode();
-  const existing = await readByMode(mode);
+  const existing = await readByMode(mode, userId);
   if (!existing) return;
   existing.lastEmailSentAt = new Date().toISOString();
-  await writeByMode(mode, existing);
+  await writeByMode(mode, existing, userId);
+}
+
+/** Workspaces eligible for weekday cron emails (per-user + legacy global). */
+export async function listCronWorkspaces(): Promise<
+  Array<{ userId: string | null; workspace: WorkspaceSnapshot }>
+> {
+  const mode = resolveStorageMode();
+  const results: Array<{ userId: string | null; workspace: WorkspaceSnapshot }> =
+    [];
+
+  const { listUserIds } = await import("@/lib/server/user-store");
+  const userIds = await listUserIds();
+
+  for (const userId of userIds) {
+    const raw = await readByMode(mode, userId);
+    if (!raw) continue;
+    const workspace = normalizeSnapshot(raw);
+    results.push({ userId, workspace });
+  }
+
+  const legacyRaw = await readByMode(mode);
+  if (legacyRaw) {
+    results.push({ userId: null, workspace: normalizeSnapshot(legacyRaw) });
+  }
+
+  return results;
 }

@@ -23,6 +23,13 @@ import { cn } from "@/lib/utils";
 import { exportToXlsx, importFromXlsx, type ImportResult } from "@/lib/xlsx";
 import { sendTestEmail, syncWorkspace } from "@/lib/sync-client";
 import { useConfirm } from "@/components/confirm-dialog";
+import { useAuth } from "@/components/auth-provider";
+import { EmailRecipientsEditor } from "@/components/email-recipients-editor";
+import {
+  formatRecipientList,
+  isValidEmail,
+  normalizeEmailRecipients,
+} from "@/lib/email-recipients";
 
 type ImportSummary = {
   warnings: string[];
@@ -46,6 +53,7 @@ export default function SettingsPage() {
   const freelanceGoals = useStore((s) => s.freelanceGoals);
   const setFreelanceGoals = useStore((s) => s.setFreelanceGoals);
   const confirm = useConfirm();
+  const { user } = useAuth();
 
   const [mode, setMode] = React.useState<"merge" | "replace">("merge");
   const [busy, setBusy] = React.useState<
@@ -138,15 +146,27 @@ export default function SettingsPage() {
   };
 
   const runSync = React.useCallback(async () => {
+    const emails = normalizeEmailRecipients(
+      emailReports.emails,
+      user?.email ?? emailReports.emails[0] ?? ""
+    );
+    if (emails.length === 0) {
+      throw new Error("Add at least one valid recipient email.");
+    }
+
+    const syncOptions = user
+      ? { useSession: true as const }
+      : emailReports.syncSecret;
+
     const result = await syncWorkspace(
       {
         projects,
         tags,
         entries,
         emailReportsEnabled: emailReports.enabled,
-        email: emailReports.email,
+        emails,
       },
-      emailReports.syncSecret
+      syncOptions
     );
     if (!result.ok) {
       const err = new Error(result.error) as Error & {
@@ -162,9 +182,10 @@ export default function SettingsPage() {
     tags,
     entries,
     emailReports.enabled,
-    emailReports.email,
+    emailReports.emails,
     emailReports.syncSecret,
     setEmailReports,
+    user,
   ]);
 
   const handleSyncNow = async () => {
@@ -189,12 +210,26 @@ export default function SettingsPage() {
     setError(null);
     setEmailMessage(null);
     setStorageSetup(null);
-    if (!emailReports.syncSecret.trim()) {
+    if (!user && !emailReports.syncSecret.trim()) {
       setError(
         "Enter the sync secret first (must match SYNC_SECRET on the server)."
       );
       return;
     }
+
+    const emails = normalizeEmailRecipients(
+      emailReports.emails,
+      user?.email ?? emailReports.emails[0] ?? ""
+    );
+    if (emails.length === 0) {
+      setError("Add at least one valid recipient email.");
+      return;
+    }
+    if (emailReports.emails.some((e) => e.trim() && !isValidEmail(e))) {
+      setError("Fix invalid email addresses before sending.");
+      return;
+    }
+
     setBusy("test-email");
     try {
       const result = await sendTestEmail(
@@ -203,16 +238,16 @@ export default function SettingsPage() {
           tags,
           entries,
           emailReportsEnabled: emailReports.enabled,
-          email: emailReports.email,
+          emails,
         },
-        emailReports.syncSecret
+        user ? { useSession: true } : emailReports.syncSecret
       );
       if (!result.ok) {
         setError(result.error);
         if (result.setup?.steps) setStorageSetup([...result.setup.steps]);
         return;
       }
-      setEmailMessage(`Test email sent to ${emailReports.email}.`);
+      setEmailMessage(`Test email sent to ${formatRecipientList(emails)}.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Test email failed.");
     } finally {
@@ -315,11 +350,10 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle>Weekday email export</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Email your full <code className="text-xs">.xlsx</code> export to{" "}
-              <b>midokhalil1987@gmail.com</b> every Monday–Friday morning
-              (8:00 AM Cairo time when deployed on Vercel). Your browser syncs
-              data to the server so the scheduled job can attach the latest
-              workbook.
+              Email your full <code className="text-xs">.xlsx</code> export to
+              up to three addresses every Monday–Friday morning (8:00 AM Cairo
+              time when deployed on Vercel). Your browser syncs data to the
+              server so the scheduled job can attach the latest workbook.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -342,33 +376,40 @@ export default function SettingsPage() {
               </span>
             </label>
 
-            <FormField>
-              <FieldLabel section>Recipient email</FieldLabel>
-              <Input
-                type="email"
-                value={emailReports.email}
-                onChange={(e) => setEmailReports({ email: e.target.value })}
-                placeholder="midokhalil1987@gmail.com"
-              />
-            </FormField>
+            <EmailRecipientsEditor
+              emails={emailReports.emails}
+              onChange={(emails) => setEmailReports({ emails })}
+              disabled={busy !== null}
+            />
 
-            <FormField>
-              <FieldLabel section>Sync secret</FieldLabel>
-              <Input
-                type="password"
-                value={emailReports.syncSecret}
-                onChange={(e) =>
-                  setEmailReports({ syncSecret: e.target.value })
-                }
-                placeholder="Same value as SYNC_SECRET in .env.local"
-                autoComplete="off"
-              />
-              <p className="text-xs text-muted-foreground">
-                Set <code className="text-xs">SYNC_SECRET</code> in Vercel →
-                Settings → Environment Variables (same value here). Sync also
-                needs Upstash Redis — see steps below if sync fails.
+            {user ? (
+              <p className="text-xs text-muted-foreground rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+                Signed in as <span className="font-medium">{user.username}</span>
+                . Your workspace syncs automatically to your private cloud
+                storage — no sync secret needed.
               </p>
-            </FormField>
+            ) : (
+              <FormField>
+                <FieldLabel section>Sync secret</FieldLabel>
+                <Input
+                  type="password"
+                  value={emailReports.syncSecret}
+                  onChange={(e) =>
+                    setEmailReports({ syncSecret: e.target.value })
+                  }
+                  placeholder="Same value as SYNC_SECRET in .env.local"
+                  autoComplete="off"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Set <code className="text-xs">SYNC_SECRET</code> in Vercel →
+                  Settings → Environment Variables (same value here). Or{" "}
+                  <a href="/register" className="text-primary underline">
+                    create an account
+                  </a>{" "}
+                  to skip this step.
+                </p>
+              </FormField>
+            )}
 
             <details className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
               <summary className="cursor-pointer font-medium text-foreground">

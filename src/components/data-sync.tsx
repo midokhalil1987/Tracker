@@ -3,13 +3,15 @@
 import * as React from "react";
 import { useStore } from "@/lib/store";
 import { syncWorkspace } from "@/lib/sync-client";
+import { useAuth } from "@/components/auth-provider";
 
 const SYNC_DEBOUNCE_MS = 2500;
 
-/** Pushes workspace data to the server when weekday email reports are enabled. */
+/** Pushes workspace data to the server when logged in or legacy email sync is enabled. */
 export function DataSync() {
   const hydrated = useStore((s) => s.hydrated);
   const emailReports = useStore((s) => s.emailReports);
+  const { user, loading: authLoading } = useAuth();
 
   const syncKey = useStore((s) =>
     JSON.stringify({
@@ -17,14 +19,17 @@ export function DataSync() {
       tags: s.tags,
       entries: s.entries,
       enabled: s.emailReports.enabled,
-      email: s.emailReports.email,
+      emails: s.emailReports.emails,
     })
   );
 
+  const canSync =
+    !authLoading &&
+    (Boolean(user) ||
+      (emailReports.enabled && emailReports.syncSecret.trim().length > 0));
+
   React.useEffect(() => {
-    if (!hydrated || !emailReports.enabled || !emailReports.syncSecret.trim()) {
-      return;
-    }
+    if (!hydrated || !canSync) return;
 
     const timer = window.setTimeout(() => {
       const { projects, tags, entries, emailReports: reports } =
@@ -37,9 +42,9 @@ export function DataSync() {
             tags,
             entries,
             emailReportsEnabled: reports.enabled,
-            email: reports.email,
+            emails: reports.emails,
           },
-          reports.syncSecret
+          user ? { useSession: true } : reports.syncSecret
         );
         if (result.ok) {
           useStore.getState().setEmailReports({ lastSyncedAt: Date.now() });
@@ -48,7 +53,7 @@ export function DataSync() {
     }, SYNC_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timer);
-  }, [hydrated, syncKey, emailReports.enabled, emailReports.syncSecret]);
+  }, [hydrated, syncKey, canSync, user, emailReports.syncSecret]);
 
   return null;
 }

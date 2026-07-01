@@ -12,11 +12,15 @@ import {
   Settings,
   Sparkles,
   ScrollText,
+  LogOut,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRunningElapsed } from "@/hooks/use-running-elapsed";
 import { TimelyIcon } from "@/components/timely-icon";
 import { APP_NAME, APP_SUBTITLE } from "@/lib/brand";
+import { useAuth } from "@/components/auth-provider";
+import { Button } from "@/components/ui/button";
 
 const navItems = [
   { href: "/", label: "Timer", useTimelyIcon: true as const },
@@ -35,6 +39,7 @@ function isActive(pathname: string, href: string) {
 export function Sidebar() {
   const pathname = usePathname();
   const { running, formatted } = useRunningElapsed();
+  const { user, logout } = useAuth();
   const navRef = React.useRef<HTMLElement>(null);
   const [indicator, setIndicator] = React.useState({ top: 0, height: 40 });
 
@@ -221,10 +226,39 @@ export function Sidebar() {
       </div>
 
       {/* Footer */}
-      <div className="relative z-10 px-5 py-4 border-t border-white/8">
+      <div className="relative z-10 px-5 py-4 border-t border-white/8 space-y-2">
+        {user ? (
+          <div className="rounded-lg bg-white/5 border border-white/8 px-3 py-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="grid place-items-center size-8 rounded-md bg-primary/20 text-primary shrink-0">
+                <User className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-white truncate">
+                  {user.username}
+                </p>
+                {user.email ? (
+                  <p className="text-[11px] text-sidebar-foreground/55 truncate">
+                    {user.email}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mt-2 w-full justify-start text-sidebar-foreground/75 hover:text-white hover:bg-white/10"
+              onClick={() => void logout()}
+            >
+              <LogOut className="size-3.5" />
+              Sign out
+            </Button>
+          </div>
+        ) : null}
         <div className="rounded-lg bg-white/5 border border-white/8 px-3 py-2.5">
           <p className="text-[11px] text-sidebar-foreground/55 leading-relaxed">
-            v0.1.0 · stored locally
+            v0.2.0 · cloud sync
           </p>
           {running ? (
             <p className="text-[11px] text-primary/90 mt-1 font-medium animate-pulse">
